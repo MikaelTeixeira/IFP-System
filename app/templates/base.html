@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#2D3D5F">
+    <title>{% if page_title %}{{ page_title }} | {% endif %}Instituto Fabiana Pinto</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#conteudo-principal">Ir para o conteúdo</a>
+
+    <div class="app-shell" data-app-shell>
+      <header class="topbar">
+        <button class="icon-button menu-toggle" type="button" data-menu-toggle aria-expanded="false" aria-controls="main-navigation">
+          <span class="sr-only">Abrir menu</span>
+          <span aria-hidden="true">☰</span>
+        </button>
+        <a class="brand" href="{{ url_for('core.index') }}" aria-label="Instituto Fabiana Pinto - Início">
+          <span class="brand__mark" aria-hidden="true">IFP</span>
+          <span class="brand__name">Instituto <strong>Fabiana Pinto</strong></span>
+        </a>
+        <div class="topbar__actions">
+          <button class="icon-button" type="button" aria-label="Avisos">
+            <span aria-hidden="true">●</span>
+          </button>
+          <button class="profile-chip" type="button" aria-label="Abrir opções do perfil demonstrativo">
+            <span class="profile-chip__avatar" aria-hidden="true">ST</span>
+            <span class="profile-chip__copy"><strong>Suporte IFP</strong><small>Ambiente demonstrativo</small></span>
+          </button>
+        </div>
+      </header>
+
+      {% include "partials/sidebar.html" %}
+
+      <main class="main-content" id="conteudo-principal" tabindex="-1">
+        {% block page_context %}{% endblock %}
+        <div class="page-container">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

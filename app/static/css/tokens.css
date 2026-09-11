@@ -1,0 +1,28 @@
+:root {
+  --brand-navy-900: #1d2942;
+  --brand-navy-700: #2d3d5f;
+  --brand-navy-500: #526484;
+  --brand-navy-100: #e7eaf0;
+  --brand-orange-700: #914713;
+  --brand-orange-500: #b96121;
+  --brand-orange-100: #f7e8dd;
+  --surface-page: #f6f7f9;
+  --surface-panel: #ffffff;
+  --text-primary: #202735;
+  --text-muted: #667085;
+  --border-default: #d8dde6;
+  --state-success: #277454;
+  --state-success-soft: #e5f3ed;
+  --state-warning: #9a6512;
+  --state-warning-soft: #fff2ce;
+  --state-danger: #a33a3a;
+  --state-danger-soft: #fbe7e7;
+  --focus-ring: #d47a35;
+  --font-sans: "Nunito Sans", Arial, sans-serif;
+  --radius-small: 6px;
+  --radius-medium: 10px;
+  --shadow-float: 0 12px 28px rgb(29 41 66 / 14%);
+  --sidebar-width: 252px;
+  --topbar-height: 72px;
+}
+

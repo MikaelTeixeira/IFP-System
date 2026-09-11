@@ -107,7 +107,7 @@ As regras já definidas para esta etapa são:
 
 ### Bloco 2 - Fundação Flask
 
-**Estado:** não iniciado.
+**Estado:** concluído em 11 de setembro de 2026.
 
 **Escopo**
 
@@ -122,6 +122,17 @@ As regras já definidas para esta etapa são:
 - Aplicação inicia localmente sem erros.
 - Templates e componentes compartilham o mesmo sistema visual.
 - Estrutura aceita novos módulos sem duplicar layouts ou navegação.
+
+**Entregáveis produzidos**
+
+- Fábrica da aplicação e configuração por ambiente.
+- Blueprint principal preparado para receber novos domínios.
+- Templates base, partials e macros reutilizáveis.
+- Tokens, estilos estruturais, componentes e regras responsivas.
+- Dados temporários isolados em módulo próprio.
+- Páginas personalizadas para acesso restrito, página inexistente e erro interno.
+- Página de referência visual para revisão dos componentes.
+- Testes de inicialização, renderização e erro 404.
 
 ### Bloco 3 - Acesso e estrutura principal
 

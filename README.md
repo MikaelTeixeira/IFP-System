@@ -6,11 +6,21 @@ a 4 definidos no planejamento do frontend.
 
 ## Estado atual
 
-O projeto está na etapa de planejamento. Nenhuma tela ou fluxo foi implementado
-ainda.
+Os Blocos 1 e 2 foram concluídos. A aplicação já contém a fundação Flask, o
+layout responsivo, os componentes compartilhados e os estados de erro.
+
+## Executar localmente
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+flask --app run.py run --debug
+```
+
+A aplicação ficará disponível em `http://127.0.0.1:5000`.
 
 ## Documentação
 
 - [Planejamento do frontend](docs/PLANEJAMENTO_FRONTEND.md)
 - [Diário de desenvolvimento](docs/DIARIO_DESENVOLVIMENTO.md)
-

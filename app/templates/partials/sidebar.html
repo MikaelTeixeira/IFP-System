@@ -1,0 +1,18 @@
+<aside class="sidebar" id="main-navigation" data-sidebar aria-label="Navegação principal">
+  <div class="sidebar__heading">Navegação</div>
+  <nav>
+    <ul class="nav-list">
+      {% for item in navigation_items|default([]) %}
+        <li>
+          <a class="nav-link{% if active_navigation == item.key %} is-active{% endif %}" href="{{ url_for(item.endpoint) }}"{% if active_navigation == item.key %} aria-current="page"{% endif %}>
+            <span class="nav-link__icon" aria-hidden="true">{% if item.icon == "home" %}⌂{% else %}▦{% endif %}</span>
+            <span>{{ item.label }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </nav>
+  <div class="sidebar__note"><strong>Bloco 2</strong><span>Fundação da interface</span></div>
+</aside>
+<button class="sidebar-backdrop" type="button" data-menu-close aria-label="Fechar menu"></button>
+

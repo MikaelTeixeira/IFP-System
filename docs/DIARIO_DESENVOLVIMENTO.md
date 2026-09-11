@@ -68,3 +68,39 @@ o laranja institucional ficou reservado a ações e informações relevantes.
 
 Iniciar o Bloco 2, criando a fundação Flask e os componentes estruturais conforme
 as definições aprovadas neste bloco.
+
+## 11 de setembro de 2026 - Bloco 2 concluído
+
+**Estado:** fundação Flask implementada e verificada.
+
+### Implementação
+
+- Aplicação organizada com fábrica, configuração e Blueprint principal.
+- Templates Jinja separados em base, partials, macros, páginas e erros.
+- Sistema de estilos dividido em tokens, base, componentes, layout e
+  responsividade.
+- Comportamento do menu móvel implementado com JavaScript sem framework.
+- Dados demonstrativos isolados da camada de apresentação.
+- Página inicial de fundação e catálogo navegável de componentes criados.
+- Páginas de erro 403, 404 e 500 adicionadas.
+- Dependências registradas em `requirements.txt` e `requirements-dev.txt`.
+
+### Verificação
+
+- Aplicação iniciada localmente com Flask 3.1.2.
+- Dois testes automatizados executados com sucesso.
+- Rotas `/`, `/componentes` e tratamento de página inexistente verificados.
+- Layout desktop revisado em navegador.
+- Breakpoint de 390 px verificado: navegação lateral recolhida e menu móvel
+  funcional.
+- Nenhum erro de console ou falha de renderização observado durante a revisão.
+
+### Limite preservado
+
+O login, a sessão por perfil e a navegação baseada em permissão não foram
+antecipados. Esses fluxos pertencem ao Bloco 3.
+
+### Próxima etapa
+
+Iniciar o Bloco 3 com formulário livre, acessos rápidos, sessão demonstrativa e
+navegação correspondente ao perfil ativo.
