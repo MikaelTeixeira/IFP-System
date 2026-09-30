@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import empty_state, status_tag %}
+{% block content %}
+  <header class="page-header">
+    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> {{ config.plural }}</p><h1>{{ page_title }}</h1><p>{{ page_description }}</p></div>
+    {% if can_manage %}<a class="button button--primary" href="{{ url_for('academic.create', entity=entity) }}">Adicionar {{ config.singular|lower }}</a>{% endif %}
+  </header>
+
+  <form class="filter-bar" method="get" aria-label="Filtros de {{ config.plural|lower }}">
+    <div class="field filter-bar__search"><label for="q">Buscar</label><input id="q" name="q" value="{{ query }}" placeholder="Nome, código ou vínculo"></div>
+    <div class="field"><label for="status">Situação</label><select id="status" name="status"><option value="">Todas</option><option value="Ativo"{% if selected_status == 'Ativo' %} selected{% endif %}>Ativo</option><option value="Ativa"{% if selected_status == 'Ativa' %} selected{% endif %}>Ativa</option><option value="Pendente"{% if selected_status == 'Pendente' %} selected{% endif %}>Pendente</option><option value="Inativo"{% if selected_status == 'Inativo' %} selected{% endif %}>Inativo</option><option value="Inativa"{% if selected_status == 'Inativa' %} selected{% endif %}>Inativa</option></select></div>
+    {% if entity in ['alunos', 'professores'] and municipalities %}<div class="field"><label for="municipio_id">Município</label><select id="municipio_id" name="municipio_id" data-municipality-filter><option value="">Todos</option>{% for municipality in municipalities %}<option value="{{ municipality.id }}"{% if selected_municipality == municipality.id %} selected{% endif %}>{{ municipality.nome }}</option>{% endfor %}</select></div>{% endif %}
+    {% if entity in ['alunos', 'professores'] and institutions %}<div class="field"><label for="instituicao_id">Instituição</label><select id="instituicao_id" name="instituicao_id"><option value="">Todas</option>{% for institution in institutions %}<option value="{{ institution.id }}" data-municipality="{{ institution.municipio_id }}"{% if selected_institution == institution.id %} selected{% endif %}>{{ institution.nome }}</option>{% endfor %}</select></div>{% endif %}
+    <button class="button button--secondary" type="submit">Aplicar filtros</button>
+    {% if query or selected_status or selected_municipality or selected_institution %}<a class="button button--quiet" href="{{ url_for('academic.list_entities', entity=entity) }}">Limpar</a>{% endif %}
+  </form>
+
+  {% if records %}
+    <section class="data-panel" aria-label="Lista de {{ config.plural|lower }}">
+      <div class="data-panel__meta"><strong>{{ pagination.total }} registro{% if pagination.total != 1 %}s{% endif %}</strong><span>Página {{ pagination.page }} de {{ pagination.pages }}</span></div>
+      <div class="table-wrap"><table class="data-table"><thead><tr>{% for column in config.columns %}<th>{% if column == 'cpf' %}CPF{% elif column == 'email' %}E-mail{% elif column == 'instituicao' %}Instituição{% else %}{{ column|replace('_', ' ')|capitalize }}{% endif %}</th>{% endfor %}<th><span class="sr-only">Ações</span></th></tr></thead><tbody>
+        {% for record in records %}<tr>
+          {% for column in config.columns %}<td>{% if loop.first %}<a class="record-link" href="{{ url_for('academic.detail', entity=entity, item_id=record.id) }}">{{ record.get(column, '—') }}</a>{% elif column == 'status' %}{{ status_tag(record.get(column, '—'), 'warning' if record.get(column) == 'Pendente' else ('success' if record.get(column, '').lower() in ['ativo', 'ativa'] else 'neutral')) }}{% else %}{{ record.get(column, '—') }}{% endif %}</td>{% endfor %}
+          <td class="table-actions"><a class="button button--small button--quiet" href="{{ url_for('academic.detail', entity=entity, item_id=record.id) }}">Ver detalhes</a>{% if can_manage %}<a class="button button--small button--secondary" href="{{ url_for('academic.edit', entity=entity, item_id=record.id) }}">Editar</a>{% endif %}</td>
+        </tr>{% endfor %}
+      </tbody></table></div>
+      {% if pagination.pages > 1 %}<nav class="pagination" aria-label="Paginação">{% for number in range(1, pagination.pages + 1) %}<a class="pagination__link{% if number == pagination.page %} is-current{% endif %}" href="{{ url_for('academic.list_entities', entity=entity, page=number, q=query, status=selected_status, municipio_id=selected_municipality, instituicao_id=selected_institution) }}"{% if number == pagination.page %} aria-current="page"{% endif %}>{{ number }}</a>{% endfor %}</nav>{% endif %}
+    </section>
+  {% else %}
+    {{ empty_state("Nenhum registro encontrado", "Ajuste os filtros ou adicione um novo registro dentro do seu escopo.", ("Adicionar " ~ config.singular|lower) if can_manage else None, url_for('academic.create', entity=entity) if can_manage else None) }}
+  {% endif %}
+{% endblock %}

@@ -56,4 +56,10 @@ telefone e outros dados pessoais desnecessários não farão parte do protótipo
 - Reiniciar o servidor restaura o conjunto original.
 - A interface avisará quando uma ação for apenas demonstrativa.
 - Filtros, paginação e mudanças de estado funcionarão sobre os dados em memória.
+# Relatórios
+
+As médias dos relatórios usam resultados concluídos do banco quando o recorte
+possui tentativas disponíveis. Na ausência deles, a interface usa uma base
+demonstrativa estável para preservar a navegação. Frequência, faltas e evolução
+mensal também são demonstrativas até a implementação de um diário de frequência.
 

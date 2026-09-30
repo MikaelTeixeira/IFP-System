@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import empty_state, status_tag %}
+{% block content %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Correções abertas</p><h1>Correções abertas</h1><p>Avalie as respostas das questões abertas que você elaborou.</p></div></header>
+  {% if records %}<section class="correction-list">{% for item in records %}<article class="correction-card"><div><span>{{ status_tag(item.attempt.status, 'warning') }}</span><h2>{{ item.assessment.titulo }}</h2><p>{{ item.student.nome }} · {{ item.pending_count }} resposta(s) aguardando sua correção</p></div><a class="button button--primary" href="{{ url_for('assessments.correction_detail', attempt_id=item.attempt.id) }}">Corrigir respostas</a></article>{% endfor %}</section>{% else %}{{ empty_state("Nenhuma correção pendente", "As respostas abertas das suas questões aparecerão aqui após a entrega dos alunos.") }}{% endif %}
+{% endblock %}

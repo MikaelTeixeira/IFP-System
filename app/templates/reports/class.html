@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% from "reports/_macros.html" import metric_cards, chart %}
+{% block page_context %}{% set context_items = [institution.nome, series.nome, report.nome] %}{% include "partials/context_bar.html" %}{% endblock %}
+{% block content %}
+  <header class="page-header report-page-header"><div><p class="breadcrumb"><a href="{{ url_for('reports.school', institution_id=institution.id) }}">{{ institution.nome }}</a> <span aria-hidden="true">/</span> <a href="{{ url_for('reports.series', institution_id=institution.id, series_id=series.id) }}">{{ series.nome }}</a> <span aria-hidden="true">/</span> Turma</p><span class="eyebrow">Sobre a turma</span><h1>{{ report.nome }}</h1><p>{{ series.nome }} · {{ report.turno }} · Ano letivo {{ report.ano_letivo }}</p></div></header>
+  {{ metric_cards(report) }}
+  <div class="report-chart-grid">{{ chart('Evolução do desempenho', 'Média da turma ao longo do ano.', performance_chart) }}{{ chart('Faltas por mês', 'Quantidade de faltas registradas pela turma.', absence_chart, 'bar') }}</div>
+  <section class="report-section" aria-labelledby="students-title"><div class="report-section__heading"><div><span class="eyebrow">Detalhamento</span><h2 id="students-title">Desempenho dos estudantes</h2></div><p>Ordenado da maior para a menor média.</p></div>
+    {% if report.students_data %}<div class="data-panel"><div class="table-wrap"><table><thead><tr><th>Posição</th><th>Estudante</th><th>Média</th><th>Frequência</th><th>Situação</th></tr></thead><tbody>{% for student in report.students_data %}<tr><td><strong>{{ loop.index }}º</strong></td><td>{{ student.nome }}</td><td><strong>{{ ('%.1f'|format(student.average))|replace('.', ',') }}</strong></td><td>{{ ('%.1f'|format(student.attendance))|replace('.', ',') }}%</td><td><span class="status-tag status-tag--{{ 'success' if student.average >= 7 else 'warning' }}">{{ 'Bom desempenho' if student.average >= 7 else 'Atenção' }}</span></td></tr>{% endfor %}</tbody></table></div></div>{% else %}<div class="empty-state"><span class="empty-state__illustration" aria-hidden="true">♙</span><h3>Nenhum estudante nesta turma</h3><p>Os estudantes aparecerão aqui quando forem vinculados.</p></div>{% endif %}
+  </section>
+{% endblock %}

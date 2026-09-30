@@ -1,0 +1,34 @@
+{% extends "auth/base.html" %}
+{% block content %}
+  <div class="auth-layout">
+    <section class="auth-story" aria-labelledby="welcome-title">
+      <a class="auth-brand" href="{{ url_for('auth.login') }}"><span>IFP</span><strong>Instituto<br>Fabiana Pinto</strong></a>
+      <div class="auth-story__content">
+        <p class="auth-kicker">Sistema de avaliações</p>
+        <h1 id="welcome-title">Um ambiente para acompanhar cada etapa da aprendizagem.</h1>
+        <p>Acesse simulados, turmas e informações acadêmicas de acordo com o seu perfil.</p>
+      </div>
+      <div class="auth-pattern" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    </section>
+    <section class="auth-access" aria-labelledby="login-title">
+      <div class="auth-panel">
+        {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}<div class="flash flash--{{ category }}"><strong>{{ message }}</strong></div>{% endfor %}{% endif %}{% endwith %}
+        <div class="auth-panel__heading"><h2 id="login-title">Entre no sistema</h2><p>Nesta demonstração, os campos podem ficar vazios.</p></div>
+        <form class="login-form" method="post">
+          <div class="field"><label for="username">Usuário</label><input id="username" name="username" type="text" autocomplete="username" placeholder="Digite seu usuário"></div>
+          <div class="field"><label for="password">Senha</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Digite sua senha"></div>
+          <div class="field"><label for="profile">Perfil para demonstração</label><select id="profile" name="profile">{% for key, profile in profiles.items() %}<option value="{{ key }}">{{ profile.label }}</option>{% endfor %}</select></div>
+          <button class="button button--primary button--wide" type="submit">Entrar</button>
+        </form>
+        <div class="quick-access"><div class="quick-access__heading"><h3>Acessos rápidos</h3><p>Escolha uma experiência para explorar.</p></div>
+          <div class="quick-access__grid">
+            {% for key, profile in profiles.items() %}
+              <form action="{{ url_for('auth.quick_access', profile_key=key) }}" method="post"><button class="quick-profile" type="submit"><span aria-hidden="true">{{ profile.initials }}</span><strong>{{ profile.label }}</strong><small>{{ profile.name }}</small></button></form>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock %}
+

@@ -95,6 +95,21 @@ orientação, filtro e confirmação de escopo, especialmente para coordenadores
 | Estado vazio | Explicação e próxima ação disponível |
 | Esqueleto de carregamento | Simulação coerente de conteúdo sendo carregado |
 
+### Regra obrigatória para popups
+
+Todo popup deve usar o componente visual `site-dialog` e seguir a identidade do
+Instituto Fabiana Pinto. Não serão usados `alert`, `confirm` ou `prompt` nativos
+do navegador.
+
+- fundo branco, borda superior de estado e sombra de elevação;
+- fundo da página escurecido enquanto o diálogo estiver aberto;
+- título, explicação direta e ações com os botões compartilhados do sistema;
+- variações `warning`, `success`, `danger` e informativa;
+- foco de teclado mantido no diálogo, fechamento acessível e adaptação para
+  telas menores;
+- laranja para atenção, verde para sucesso, vermelho para perigo e azul
+  institucional para informação.
+
 ## Estados obrigatórios
 
 ### Vazio
@@ -152,4 +167,3 @@ Por isso, a direção foi ajustada para usar listas estruturadas, superfícies m
 quietas e a faixa de contexto acadêmico como elemento visual característico. O
 laranja será reservado a decisões e estados importantes, evitando excesso de
 destaques.
-

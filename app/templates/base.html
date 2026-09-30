@@ -9,6 +9,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/materials.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/assessment-requests.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/users.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/question-editor.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
@@ -22,18 +28,23 @@
           <span class="sr-only">Abrir menu</span>
           <span aria-hidden="true">☰</span>
         </button>
-        <a class="brand" href="{{ url_for('core.index') }}" aria-label="Instituto Fabiana Pinto - Início">
+        <a class="brand" href="{{ url_for('core.dashboard') }}" aria-label="Instituto Fabiana Pinto - Início">
           <span class="brand__mark" aria-hidden="true">IFP</span>
           <span class="brand__name">Instituto <strong>Fabiana Pinto</strong></span>
         </a>
         <div class="topbar__actions">
-          <button class="icon-button" type="button" aria-label="Avisos">
-            <span aria-hidden="true">●</span>
-          </button>
-          <button class="profile-chip" type="button" aria-label="Abrir opções do perfil demonstrativo">
-            <span class="profile-chip__avatar" aria-hidden="true">ST</span>
-            <span class="profile-chip__copy"><strong>Suporte IFP</strong><small>Ambiente demonstrativo</small></span>
-          </button>
+          {% if current_profile %}<a class="icon-button notification-button" href="{{ url_for('core.notifications') }}" aria-label="Notificações{% if unread_notifications %}: {{ unread_notifications }} não lida(s){% endif %}"><span aria-hidden="true">●</span>{% if unread_notifications %}<span class="notification-button__dot"></span>{% endif %}</a>{% endif %}
+          {% if current_profile %}<details class="profile-menu">
+            <summary class="profile-chip" aria-label="Abrir opções do perfil demonstrativo">
+              <span class="profile-chip__avatar" aria-hidden="true">{{ current_profile.initials }}</span>
+              <span class="profile-chip__copy"><strong>{{ current_profile.name }}</strong><small>{{ current_profile.label }}</small></span>
+            </summary>
+            <div class="profile-menu__panel">
+              <div><strong>{{ current_profile.name }}</strong><span>{{ current_profile.label }}</span></div>
+              <a href="{{ url_for('auth.login') }}">Trocar perfil</a>
+              <form action="{{ url_for('auth.logout') }}" method="post"><button type="submit">Sair</button></form>
+            </div>
+          </details>{% else %}<a class="button button--secondary" href="{{ url_for('auth.login') }}">Entrar</a>{% endif %}
         </div>
       </header>
 
@@ -42,6 +53,13 @@
       <main class="main-content" id="conteudo-principal" tabindex="-1">
         {% block page_context %}{% endblock %}
         <div class="page-container">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              <div class="flash-stack" aria-live="polite">
+                {% for category, message in messages %}<div class="flash flash--{{ category }}"><strong>{{ message }}</strong></div>{% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
           {% block content %}{% endblock %}
         </div>
       </main>

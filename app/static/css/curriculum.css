@@ -1,0 +1,12 @@
+.catalog-card .topic-management-list { display: grid; gap: 0; padding: 0; }
+.catalog-card .topic-management-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 22px; background: #fafbfc; border-radius: 0; }
+.catalog-card .topic-management-list li + li { border-top: 1px solid var(--border-default); }
+.topic-management-list li > span { padding: 6px 10px; color: var(--brand-navy-900); background: var(--brand-navy-100); border-radius: 99px; font-size: .85rem; font-weight: 700; }
+.topic-management-list li > div { display: flex; gap: 8px; }
+.topic-management-list a, .topic-management-list button { padding: 5px 8px; color: var(--brand-navy-700); background: transparent; border: 0; border-radius: var(--radius-small); font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; }
+.topic-management-list a:hover { background: var(--brand-navy-100); }
+.topic-management-list button { color: var(--state-danger); }
+.topic-management-list button:hover { background: var(--state-danger-soft); }
+@media (max-width: 600px) {
+  .catalog-card .topic-management-list li { align-items: flex-start; flex-direction: column; }
+}

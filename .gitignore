@@ -7,9 +7,9 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
-instance/
+instance/*
+!instance/mysql.env.example
 tmp/
 *.log
 .DS_Store
 Thumbs.db
-

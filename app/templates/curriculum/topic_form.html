@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import alert %}
+{% block content %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('curriculum.index') }}">Matérias e assuntos</a> <span aria-hidden="true">/</span> {{ page_title }}</p><h1>{{ page_title }}</h1><p>{% if topic %}Atualize o nome do assunto vinculado à matéria.{% else %}Vincule o assunto a uma matéria disponível no seu perfil.{% endif %}</p></div></header>
+  {% if error %}{{ alert("Não foi possível salvar", error, "danger") }}{% endif %}
+  <form class="edit-form" method="post"><div class="edit-form__fields">
+    <div class="field"><label for="materia_id">Matéria</label><select id="materia_id" name="materia_id" required{% if topic %} disabled{% endif %}><option value="">Selecione</option>{% for subject in subjects %}<option value="{{ subject.id }}"{% if values.get('materia_id') == subject.id %} selected{% endif %}>{{ subject.nome }}{% if subject.escopo == 'instituicao' %} — instituição{% endif %}</option>{% endfor %}</select>{% if topic %}<input type="hidden" name="materia_id" value="{{ topic.materia_id }}">{% endif %}</div>
+    <div class="field"><label for="nome">Nome do assunto</label><input id="nome" name="nome" value="{{ values.get('nome', '') }}" placeholder="Ex.: Geometria" required></div>
+  </div><div class="form-actions"><a class="button button--secondary" href="{{ url_for('curriculum.index') }}">Cancelar</a><button class="button button--primary" type="submit">{% if topic %}Salvar alterações{% else %}Salvar assunto{% endif %}</button></div></form>
+{% endblock %}

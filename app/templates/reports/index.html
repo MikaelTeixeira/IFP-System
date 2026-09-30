@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "reports/_macros.html" import chart %}
+{% block content %}
+  <header class="page-header report-page-header">
+    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Relatórios</p><h1>Relatório das escolas</h1><p>Compare o desempenho das instituições e abra cada escola para chegar às séries e turmas.</p></div>
+    <div class="report-period"><span>Período</span><strong>Ano letivo de 2026</strong></div>
+  </header>
+
+  <section class="report-hero" aria-labelledby="network-title"><div><span class="eyebrow">Visão do Instituto</span><h2 id="network-title">Rede Instituto Fabiana Pinto</h2><p>A rede está com média <strong>{{ ('%.1f'|format(report.average))|replace('.', ',') }}</strong> entre as escolas ativas.</p></div><div class="report-hero__number"><strong>{{ report.schools|length }}</strong><span>escolas acompanhadas</span></div></section>
+
+  <div class="report-chart-grid">
+    {{ chart('Média por escola', 'Comparação das médias gerais no período.', performance_chart, 'bar') }}
+    {{ chart('Faltas por escola', 'Total de faltas registradas no período.', absence_chart, 'bar') }}
+    {{ chart('Evolução de todas as escolas', 'Acompanhe a trajetória das médias ao longo do ano.', network_trend_chart) }}
+  </div>
+
+  <section class="report-section" aria-labelledby="ranking-title">
+    <div class="report-section__heading"><div><span class="eyebrow">Comparativo</span><h2 id="ranking-title">Ranking de médias</h2></div><p>Selecione uma escola para consultar séries e turmas.</p></div>
+    <div class="ranking-list">
+      {% for school in report.ranking %}
+        <a class="ranking-row" href="{{ url_for('reports.school', institution_id=school.id) }}"><span class="ranking-row__position">{{ loop.index }}º</span><span class="ranking-row__school"><strong>{{ school.nome }}</strong><small>{{ school.students }} estudantes · {{ school.classes }} turmas</small></span><span class="ranking-row__attendance">Frequência <strong>{{ ('%.1f'|format(school.attendance))|replace('.', ',') }}%</strong></span><span class="ranking-row__score">{{ ('%.1f'|format(school.average))|replace('.', ',') }}</span><span aria-hidden="true">›</span></a>
+      {% endfor %}
+    </div>
+  </section>
+  <p class="report-data-note"><strong>Sobre os dados:</strong> resultados concluídos no sistema atualizam a média disponível. Faltas, frequência e evolução mensal usam dados demonstrativos até a integração com o diário de frequência.</p>
+{% endblock %}

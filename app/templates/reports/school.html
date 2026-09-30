@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "reports/_macros.html" import metric_cards, chart %}
+{% block page_context %}{% set context_items = [report.nome, 'Visão da escola'] %}{% include "partials/context_bar.html" %}{% endblock %}
+{% block content %}
+  <header class="page-header report-page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> {% if can_view_all %}<a href="{{ url_for('reports.index') }}">Relatórios</a> <span aria-hidden="true">/</span>{% endif %} Escola</p><span class="eyebrow">Sobre a escola</span><h1>{{ report.nome }}</h1><p>Visão geral do desempenho, da frequência e da estrutura acadêmica.</p></div><div class="report-period"><span>Período</span><strong>Ano letivo de 2026</strong></div></header>
+  {{ metric_cards(report) }}
+  <div class="report-chart-grid">{{ chart('Evolução do desempenho', 'Média geral da escola ao longo do ano.', performance_chart) }}{{ chart('Faltas por mês', 'Quantidade de faltas registradas em cada mês.', absence_chart, 'bar') }}</div>
+  <section class="report-section" aria-labelledby="series-title"><div class="report-section__heading"><div><span class="eyebrow">Próximo nível</span><h2 id="series-title">Desempenho por série</h2></div><p>Abra uma série para comparar as turmas.</p></div>
+    {% if report.series %}<div class="report-level-grid">{% for item in report.series %}<a class="report-level-card" href="{{ url_for('reports.series', institution_id=report.id, series_id=item.id) }}"><span>{{ item.turno }}</span><h3>{{ item.nome }}</h3><div><strong>{{ ('%.1f'|format(item.average))|replace('.', ',') }}</strong><small>média geral</small></div><dl><div><dt>Frequência</dt><dd>{{ ('%.1f'|format(item.attendance))|replace('.', ',') }}%</dd></div><div><dt>Turmas</dt><dd>{{ item.classes }}</dd></div></dl><b>Ver série <span aria-hidden="true">›</span></b></a>{% endfor %}</div>{% else %}<div class="empty-state"><span class="empty-state__illustration" aria-hidden="true">▤</span><h3>Nenhuma série cadastrada</h3><p>Cadastre a estrutura acadêmica para detalhar este relatório.</p></div>{% endif %}
+  </section>
+  <p class="report-data-note"><strong>Sobre os dados:</strong> resultados concluídos atualizam a média disponível. Faltas, frequência e evolução mensal são demonstrativas até a integração com o diário de frequência.</p>
+{% endblock %}
