@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> <a href="{{ url_for('academic.list_entities', entity=entity) }}">{{ config.plural }}</a> <span aria-hidden="true">/</span> {{ page_title }}</p><h1>{{ page_title }}</h1><p>Preencha as informações para simular esta alteração.</p></div></header>
+  <form class="edit-form" method="post">
+    <div class="edit-form__fields">
+      {% for field in config.fields %}<div class="field"><label for="{{ field }}">{{ field_labels.get(field, field|replace('_', ' ')|capitalize) }}{% if field == 'codigo' and entity == 'municipios' %} <span>(identificador oficial, como o código IBGE)</span>{% elif field == 'codigo' and entity == 'instituicoes' %} <span>(identificador interno da instituição)</span>{% elif field_help.get(field) %} <span>({{ field_help.get(field) }})</span>{% endif %}</label>
+        {% if field == 'disciplina_ids' %}<details class="multi-select" id="{{ field }}"><summary>Selecionar matérias</summary><div>{% for option in options[field] %}<label><input type="checkbox" name="{{ field }}" value="{{ option.id }}"{% if option.id in record.get(field, []) %} checked{% endif %}><span>{{ option.nome }}{% if option.escopo == 'instituicao' %} <small>Exclusiva da instituição</small>{% endif %}</span></label>{% endfor %}</div></details><small>Marque uma ou mais matérias aprovadas.</small>
+        {% elif options.get(field) %}<select id="{{ field }}" name="{{ field }}"><option value="">Selecione</option>{% for option in options[field] %}<option value="{{ option.id }}"{% if record.get(field) == option.id %} selected{% endif %}>{{ option.nome }}{% if option.serie %} — {{ option.serie }}{% endif %}{% if option.instituicao %} — {{ option.instituicao }}{% endif %}</option>{% endfor %}</select>
+        {% elif field == 'turno' %}<select id="turno" name="turno"><option value="">Selecione</option>{% for choice in ['Manhã', 'Tarde', 'Noite'] %}<option value="{{ choice }}"{% if record.get(field) == choice %} selected{% endif %}>{{ choice }}</option>{% endfor %}</select>
+        {% else %}<input id="{{ field }}" name="{{ field }}"{% if field == 'email' %} type="email"{% endif %} value="{{ record.get(field, '') }}" placeholder="Informe {{ field_labels.get(field, field)|lower }}">{% endif %}
+      </div>{% endfor %}
+    </div>
+    <div class="form-actions"><a class="button button--secondary" href="{{ url_for('academic.list_entities', entity=entity) }}">Cancelar</a><button class="button button--primary" type="submit">Salvar {{ config.singular|lower }}</button></div>
+  </form>
+{% endblock %}

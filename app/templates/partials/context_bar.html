@@ -1,0 +1,12 @@
+{% if context_items %}
+  <nav class="context-bar" aria-label="Contexto acadêmico">
+    <ol class="context-bar__list">
+      {% for item in context_items %}
+        <li{% if loop.last %} aria-current="page"{% endif %}>
+          {% if not loop.last %}<a href="#">{{ item }}</a>{% else %}<strong>{{ item }}</strong>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  </nav>
+{% endif %}
+

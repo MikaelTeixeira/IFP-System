@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import empty_state %}
+{% block content %}
+  <div class="error-page">{{ empty_state("Página não encontrada", "O endereço pode estar incorreto ou a página foi movida.", "Voltar ao início") }}</div>
+{% endblock %}
+

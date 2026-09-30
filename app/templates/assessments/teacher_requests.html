@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import empty_state, status_tag %}
+{% block content %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Solicitações de questões</p><h1>Solicitações de questões</h1><p>Consulte prazos, envie questões e acompanhe pedidos de revisão.</p></div></header>
+  {% if requests %}<section class="teacher-request-cards" aria-label="Solicitações recebidas">{% for item in requests %}<article class="teacher-request-card"><div class="teacher-request-card__top"><span>{{ item.minha_atribuicao.materia.nome }}</span>{{ status_tag(item.status, 'success' if item.status in ['Pronto para agendar', 'Agendado'] else 'warning') }}</div><h2>{{ item.titulo }}</h2><p>{{ item.series|map(attribute='nome')|join(', ') }} · prazo até <strong>{{ item.prazo }}</strong></p><div><span>{{ item.minha_atribuicao.entregas|length }} questão(ões) enviada(s)</span><a class="button button--primary" href="{{ url_for('assessments.answer_request', request_id=item.id) }}">Abrir solicitação</a></div></article>{% endfor %}</section>{% else %}{{ empty_state("Nenhuma solicitação recebida", "As solicitações da coordenação da sua escola aparecerão aqui.") }}{% endif %}
+{% endblock %}

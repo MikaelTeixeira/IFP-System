@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import alert %}
+{% block content %}
+  <header class="page-header">
+    <div><p class="breadcrumb"><a href="{{ url_for('assessments.list_assessments') }}">Solicitações de simulados</a> <span aria-hidden="true">/</span> Nova solicitação</p><h1>Solicitar simulado</h1><p>Informe os anos participantes, as matérias e quem ficará responsável pelas questões.</p></div>
+  </header>
+  {% if error %}{{ alert("Não foi possível enviar a solicitação", error, "danger") }}{% endif %}
+  <form class="assessment-request-form" method="post" data-assessment-request-form>
+    <section class="form-section">
+      <div class="form-section__heading"><span>1</span><div><h2>Anos participantes</h2><p>Selecione os anos da sua escola que farão o simulado.</p></div></div>
+      <div class="request-choice-grid">{% for item in series %}<label><input type="checkbox" name="serie_ids" value="{{ item.id }}"{% if item.id in selected_series %} checked{% endif %}><span><strong>{{ item.nome }}</strong><small>{{ item.turno }}</small></span></label>{% endfor %}</div>
+    </section>
+    <section class="form-section">
+      <div class="form-section__heading"><span>2</span><div><h2>Matérias do simulado</h2><p>Marque todas as matérias que participarão desta aplicação.</p></div></div>
+      <div class="request-choice-grid">{% for subject in subjects %}<label><input type="checkbox" name="materia_ids" value="{{ subject.id }}" data-request-subject="{{ subject.id }}"{% if subject.id in selected_subjects %} checked{% endif %}{% if not eligible_teachers[subject.id] %} disabled{% endif %}><span><strong>{{ subject.nome }}</strong><small>{% if eligible_teachers[subject.id] %}{{ eligible_teachers[subject.id]|length }} professor(es) disponível(is){% else %}Sem professor habilitado na escola{% endif %}</small></span></label>{% endfor %}</div>
+    </section>
+    <section class="form-section">
+      <div class="form-section__heading"><span>3</span><div><h2>Professores responsáveis</h2><p>Para cada matéria escolhida, selecione quem elaborará as questões.</p></div></div>
+      <div class="teacher-assignment-list" data-teacher-assignments>
+        {% for subject in subjects %}
+          <div class="teacher-assignment" data-assignment-subject="{{ subject.id }}"{% if subject.id not in selected_subjects %} hidden{% endif %}>
+            <div><span>Matéria</span><strong>{{ subject.nome }}</strong></div>
+            <div class="field"><label for="professor_{{ subject.id }}">Professor responsável</label><select id="professor_{{ subject.id }}" name="professor_{{ subject.id }}"{% if subject.id not in selected_subjects %} disabled{% endif %}><option value="">Selecione um professor</option>{% for teacher in eligible_teachers[subject.id] %}<option value="{{ teacher.id }}"{% if values.get('professor_' ~ subject.id) == teacher.id %} selected{% endif %}>{{ teacher.nome }}</option>{% endfor %}</select></div>
+          </div>
+        {% endfor %}
+        <p class="teacher-assignment-list__empty" data-assignment-empty{% if selected_subjects %} hidden{% endif %}>Selecione as matérias na etapa anterior para atribuir os professores.</p>
+      </div>
+    </section>
+    <section class="form-section request-deadline"><div class="form-section__heading"><span>4</span><div><h2>Prazo para entrega</h2><p>Defina até quando os professores devem enviar as questões.</p></div></div><div class="request-deadline__field field"><label for="prazo">Data limite</label><input id="prazo" name="prazo" type="date" value="{{ values.get('prazo', '') }}" required><small>O prazo ficará visível para todos os professores responsáveis.</small></div></section>
+    <section class="form-section request-notes"><div class="field"><label for="observacoes">Orientações adicionais <span>(opcional)</span></label><textarea id="observacoes" name="observacoes" rows="4" placeholder="Inclua temas, objetivos ou observações para a elaboração.">{{ values.get('observacoes', '') }}</textarea></div></section>
+    <div class="form-actions"><a class="button button--secondary" href="{{ url_for('assessments.list_assessments') }}">Cancelar</a><button class="button button--primary" type="submit">Enviar solicitação</button></div>
+  </form>
+{% endblock %}

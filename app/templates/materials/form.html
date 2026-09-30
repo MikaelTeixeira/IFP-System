@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import alert %}
+{% block content %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('materials.index') }}">Materiais de revisão</a> <span aria-hidden="true">/</span> {{ page_title }}</p><h1>{{ page_title }}</h1><p>{% if material %}Atualize o conteúdo e as turmas que recebem esta publicação.{% else %}Compartilhe uma orientação, um texto ou um arquivo com suas turmas.{% endif %}</p></div></header>
+  {% if error %}{{ alert("Não foi possível salvar", error, "danger") }}{% endif %}
+  <form class="edit-form material-form" method="post" enctype="multipart/form-data">
+    <div class="edit-form__fields">
+      <div class="field"><label for="titulo">Título</label><input id="titulo" name="titulo" value="{{ values.get('titulo', '') }}" placeholder="Ex.: Revisão para o simulado"></div>
+      <div class="field"><label for="descricao">Descrição curta</label><input id="descricao" name="descricao" value="{{ values.get('descricao', '') }}" placeholder="Explique o objetivo desta postagem"></div>
+      <div class="field"><label for="materia_id">Matéria</label><select id="materia_id" name="materia_id" data-subject-select><option value="">Selecione</option>{% for subject in subjects %}<option value="{{ subject.id }}"{% if values.get('materia_id') == subject.id %} selected{% endif %}>{{ subject.nome }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="assunto_id">Assunto</label><select id="assunto_id" name="assunto_id" data-topic-select><option value="">Selecione a matéria primeiro</option>{% for topic in topics %}<option value="{{ topic.id }}" data-subject="{{ topic.materia_id }}"{% if values.get('assunto_id') == topic.id %} selected{% endif %}>{{ topic.nome }}</option>{% endfor %}</select></div>
+      <fieldset class="field material-form__classes"><legend>Turmas</legend><small>Selecione quem receberá o material.</small><div>{% for turma in classes %}<label><input type="checkbox" name="turma_ids" value="{{ turma.id }}"{% if turma.id in selected_classes %} checked{% endif %}> <span>{{ turma.nome }} · {{ turma.ano_letivo }}</span></label>{% endfor %}</div></fieldset>
+      <div class="field material-form__text"><label for="texto">Texto da postagem <span>(opcional se houver anexo)</span></label><textarea id="texto" name="texto" rows="8" placeholder="Escreva orientações, um resumo ou os pontos que devem ser revisados.">{{ values.get('texto', '') }}</textarea></div>
+      <div class="field material-form__attachment">
+        <label for="anexo">{% if material and material.anexo %}Substituir anexo{% else %}Anexo{% endif %} <span>(opcional se houver texto)</span></label>
+        <input id="anexo" name="anexo" type="file" accept=".pdf,.png,.ppt,.pptx,application/pdf,image/png,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+        <small>Formatos aceitos: PDF, PNG, PPT e PPTX. Tamanho máximo: 16 MB.</small>
+        {% if material and material.anexo %}<label class="material-form__current-file"><span>Anexo atual: <strong>{{ material.anexo.nome }}</strong></span><span><input type="checkbox" name="remover_anexo" value="1"> Remover anexo atual</span></label>{% endif %}
+      </div>
+    </div>
+    <div class="form-actions"><a class="button button--secondary" href="{{ url_for('materials.index') }}">Cancelar</a><button class="button button--primary" type="submit">{% if material %}Salvar alterações{% else %}Publicar material{% endif %}</button></div>
+  </form>
+{% endblock %}

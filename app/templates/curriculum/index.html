@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+  <header class="page-header">
+    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Matérias e assuntos</p><h1>{% if is_teacher %}Meus assuntos{% else %}Matérias e assuntos{% endif %}</h1><p>{% if is_teacher %}Organize os assuntos das matérias vinculadas ao seu cadastro.{% else %}Catálogo usado nos perfis de professores e no banco de questões.{% endif %}</p></div>
+    <div class="page-actions">{% if can_add_topic %}<a class="button button--secondary" href="{{ url_for('curriculum.create_topic') }}">Adicionar assunto</a>{% endif %}{% if can_add_subject %}<a class="button button--primary" href="{{ url_for('curriculum.create_subject') }}">Adicionar matéria</a>{% endif %}</div>
+  </header>
+  <section class="catalog-list" aria-label="Catálogo de matérias">
+    {% for subject in subjects %}
+      <article class="catalog-card">
+        <div class="catalog-card__heading"><div><span>{{ 'Minha matéria' if is_teacher else ('Global' if subject.escopo == 'global' else 'Instituição') }}</span><h2>{{ subject.nome }}</h2><p>{% if is_teacher %}Matéria vinculada ao seu cadastro{% else %}{{ subject.instituicao }} · criada por {{ subject.criado_por }}{% endif %}</p></div><strong>{{ subject.assuntos|length }} assunto{% if subject.assuntos|length != 1 %}s{% endif %}</strong></div>
+        {% if subject.assuntos %}
+          <ul class="topic-management-list">{% for topic in subject.assuntos %}<li><span>{{ topic.nome }}</span>{% if subject.can_manage_topics %}<div><a href="{{ url_for('curriculum.edit_topic', topic_id=topic.id) }}">Editar</a><button type="button" data-topic-delete data-topic-name="{{ topic.nome }}" data-topic-action="{{ url_for('curriculum.remove_topic', topic_id=topic.id) }}">Excluir</button></div>{% endif %}</li>{% endfor %}</ul>
+        {% else %}<p class="catalog-card__empty">Nenhum assunto cadastrado.</p>{% endif %}
+      </article>
+    {% endfor %}
+  </section>
+  {% if can_add_topic %}<dialog class="site-dialog site-dialog--danger" data-topic-delete-dialog aria-labelledby="topic-delete-title">
+    <div class="site-dialog__mark" aria-hidden="true">!</div><h2 id="topic-delete-title">Excluir assunto?</h2><p data-topic-delete-message>O assunto será removido da matéria.</p>
+    <form method="dialog"><button class="button button--secondary" type="submit">Cancelar</button><button class="button button--danger" type="button" data-topic-delete-confirm>Excluir assunto</button></form>
+  </dialog>{% endif %}
+{% endblock %}

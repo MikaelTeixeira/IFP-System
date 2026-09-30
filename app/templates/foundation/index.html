@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import alert, status_tag %}
+{% block page_context %}{% set context_items = examples.context %}{% include "partials/context_bar.html" %}{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <div>
+      <p class="breadcrumb"><a href="{{ url_for('core.index') }}">Início</a> <span aria-hidden="true">/</span> Fundação</p>
+      <h1>{{ page_title }}</h1><p>{{ page_description }}</p>
+    </div>
+    <a class="button button--primary" href="{{ url_for('core.components') }}">Ver componentes</a>
+  </header>
+  {{ alert("Fundação preparada", "A estrutura visual e os componentes base estão prontos para receber acesso e estrutura acadêmica.", "success") }}
+  <section aria-labelledby="resumo-title">
+    <div class="section-heading"><div><h2 id="resumo-title">Visão da demonstração</h2><p>Conteúdo fictício previsto para os próximos blocos.</p></div></div>
+    <div class="stat-strip">
+      {% for statistic in examples.statistics %}<div class="stat-strip__item"><span>{{ statistic.label }}</span><strong>{{ statistic.value }}</strong><small>{{ statistic.detail }}</small></div>{% endfor %}
+    </div>
+  </section>
+  <section class="panel" aria-labelledby="pessoas-title">
+    <div class="panel__header"><div><h2 id="pessoas-title">Pessoas de demonstração</h2><p>Amostra do padrão de lista compartilhado.</p></div>{{ status_tag("Dados fictícios", "info") }}</div>
+    <div class="table-wrap"><table><thead><tr><th>Nome</th><th>Perfil</th><th>Situação</th></tr></thead><tbody>
+      {% for person in examples.people %}<tr><td><strong>{{ person.name }}</strong></td><td>{{ person.role }}</td><td>{{ status_tag(person.status, "success") }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+{% endblock %}
+

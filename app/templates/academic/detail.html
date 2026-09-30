@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import status_tag, empty_state %}
+{% block page_context %}
+  {% if record.instituicao or entity == 'instituicoes' %}{% set context_items = [record.instituicao or record.nome, config.singular] %}{% include "partials/context_bar.html" %}{% endif %}
+{% endblock %}
+{% block content %}
+  <header class="page-header">
+    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> {% if current_profile.key != 'student' %}<a href="{{ url_for('academic.list_entities', entity=entity) }}">{{ config.plural }}</a> <span aria-hidden="true">/</span>{% endif %} Detalhes</p><div class="title-with-status"><h1>{{ record.nome }}</h1>{{ status_tag(record.status, 'warning' if record.status == 'Pendente' else ('success' if record.status.lower() in ['ativo', 'ativa'] else 'neutral')) }}</div><p>Informações acadêmicas disponíveis para o perfil atual.</p></div>
+    {% if can_manage %}<a class="button button--primary" href="{{ url_for('academic.edit', entity=entity, item_id=record.id) }}">Editar {{ config.singular|lower }}</a>{% endif %}
+  </header>
+  <section class="detail-grid" aria-label="Dados de {{ record.nome }}">
+    {% for key, value in record.items() if key not in ['id', 'nome', 'status', 'cpf', 'municipio_id', 'instituicao_id', 'serie_id', 'turma_id', 'turma_ids', 'disciplina_ids', 'municipio', 'instituicao', 'serie', 'turma', 'turmas', 'disciplinas'] %}
+      <div class="detail-item"><span>{% if key == 'cpf' %}CPF{% elif key == 'email' %}E-mail{% else %}{{ key|replace('_', ' ')|capitalize }}{% endif %}</span><strong>{{ value or 'Não informado' }}</strong></div>
+    {% endfor %}
+    {% for key in ['municipio', 'instituicao', 'serie', 'turma', 'turmas', 'disciplinas'] if record.get(key) %}<div class="detail-item"><span>{% if key == 'instituicao' %}Instituição{% else %}{{ key|capitalize }}{% endif %}</span><strong>{{ record.get(key) }}</strong></div>{% endfor %}
+  </section>
+  {% if can_manage or can_toggle %}<section class="management-panel"><div><h2>Gerenciamento</h2><p>As alterações são demonstrativas e permanecem somente nesta execução.</p></div>{% if can_toggle %}<form action="{{ url_for('academic.toggle', entity=entity, item_id=record.id) }}" method="post"><button class="button button--secondary" type="submit">{% if record.status.lower() in ['ativo', 'ativa'] %}Desativar{% else %}Ativar{% endif %}</button></form>{% else %}<button class="button button--secondary" type="button" disabled title="A ativação depende da política do Instituto">Alterar situação</button>{% endif %}</section>{% endif %}
+  {% if can_transfer %}<section class="transfer-panel"><div><h2>Transferir professor</h2><p>Mova o perfil para outra instituição. Os vínculos com turmas atuais serão removidos.</p></div><form action="{{ url_for('academic.transfer_teacher', item_id=record.id) }}" method="post"><label class="sr-only" for="transfer_instituicao_id">Nova instituição</label><select id="transfer_instituicao_id" name="instituicao_id" required><option value="">Selecione a instituição</option>{% for institution in transfer_institutions %}<option value="{{ institution.id }}">{{ institution.nome }} — {{ institution.municipio }}</option>{% endfor %}</select><button class="button button--primary" type="submit">Transferir</button></form></section>{% endif %}
+  {% for related_title, related_entity, related_records in related %}<section class="related-section"><div class="section-heading"><div><h2>{{ related_title }}</h2><p>Registros relacionados a {{ record.nome }}.</p></div></div>{% if related_records %}<div class="related-list">{% for item in related_records[:5] %}<a href="{{ url_for('academic.detail', entity=related_entity, item_id=item.id) }}"><strong>{{ item.nome }}</strong><span>{{ item.status }}</span></a>{% endfor %}</div>{% else %}{{ empty_state("Nenhum vínculo encontrado", "Ainda não há registros relacionados nesta demonstração.") }}{% endif %}</section>{% endfor %}
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('curriculum.index') }}">Matérias e assuntos</a> <span aria-hidden="true">/</span> Nova matéria</p><h1>Nova matéria</h1><p>Adicione uma opção aprovada ao catálogo usado no cadastro de professores.</p></div></header>
+  <form class="edit-form" method="post"><div class="edit-form__fields">
+    <div class="field field--wide"><label for="nome">Nome da matéria</label><input id="nome" name="nome" placeholder="Ex.: Geografia"></div>
+    {% if fixed_scope %}<input type="hidden" name="escopo" value="{{ fixed_scope }}"><div class="field field--wide"><label>Disponibilidade</label><p class="field-note">{% if fixed_scope == 'global' %}Global, para todas as instituições.{% else %}Somente para a sua instituição.{% endif %}</p></div>
+    {% else %}<div class="field"><label for="escopo">Disponibilidade</label><select id="escopo" name="escopo" data-scope-select><option value="global">Global</option><option value="instituicao">Instituição específica</option></select></div><div class="field" data-institution-scope hidden><label for="instituicao_id">Instituição</label><select id="instituicao_id" name="instituicao_id"><option value="">Selecione</option>{% for institution in institutions %}<option value="{{ institution.id }}">{{ institution.nome }}</option>{% endfor %}</select></div>{% endif %}
+  </div><div class="form-actions"><a class="button button--secondary" href="{{ url_for('curriculum.index') }}">Cancelar</a><button class="button button--primary" type="submit">Salvar matéria</button></div></form>
+{% endblock %}

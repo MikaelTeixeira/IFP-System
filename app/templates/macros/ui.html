@@ -1,0 +1,20 @@
+{% macro status_tag(label, kind="neutral") %}
+  <span class="status-tag status-tag--{{ kind }}">{{ label }}</span>
+{% endmacro %}
+
+{% macro alert(title, message, kind="info") %}
+  <div class="alert alert--{{ kind }}" role="{% if kind == 'danger' %}alert{% else %}status{% endif %}">
+    <div class="alert__icon" aria-hidden="true">{% if kind == "success" %}✓{% elif kind == "warning" %}!{% elif kind == "danger" %}×{% else %}i{% endif %}</div>
+    <div><strong>{{ title }}</strong><p>{{ message }}</p></div>
+  </div>
+{% endmacro %}
+
+{% macro empty_state(title, message, action_label=None, action_url=None) %}
+  <div class="empty-state">
+    <div class="empty-state__illustration" aria-hidden="true">◇</div>
+    <h3>{{ title }}</h3>
+    <p>{{ message }}</p>
+    {% if action_label %}<a class="button button--primary" href="{{ action_url or url_for('core.index') }}">{{ action_label }}</a>{% endif %}
+  </div>
+{% endmacro %}
+

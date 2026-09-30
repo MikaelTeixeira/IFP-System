@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import alert, empty_state, status_tag %}
+{% block content %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.index') }}">Início</a> <span aria-hidden="true">/</span> Componentes</p><h1>{{ page_title }}</h1><p>{{ page_description }}</p></div></header>
+  <section class="component-section" aria-labelledby="buttons-title"><h2 id="buttons-title">Ações</h2><div class="component-row">
+    <button class="button button--primary" type="button">Salvar alterações</button><button class="button button--secondary" type="button">Voltar</button><button class="button button--quiet" type="button">Mais opções</button><button class="button button--danger" type="button">Desativar</button><button class="button button--primary" type="button" disabled title="Indisponível para este perfil">Ação condicionada</button>
+  </div></section>
+  <section class="component-section" aria-labelledby="messages-title"><h2 id="messages-title">Mensagens</h2><div class="stack">
+    {{ alert("Alterações salvas", "Os dados foram atualizados durante esta sessão.", "success") }}
+    {{ alert("Confira o vínculo", "Esta mudança afeta a turma atual do aluno.", "warning") }}
+    {{ alert("Não foi possível concluir", "Revise as informações e tente novamente.", "danger") }}
+    {{ alert("Ambiente demonstrativo", "As alterações serão restauradas ao reiniciar a aplicação.", "info") }}
+  </div></section>
+  <section class="component-section" aria-labelledby="forms-title"><h2 id="forms-title">Formulário</h2><form class="form-panel" action="#" method="get">
+    <div class="field"><label for="institution">Instituição</label><select id="institution"><option>Escola Horizonte</option><option>Colégio Caminhos</option></select><small>Selecione uma instituição dentro do seu escopo.</small></div>
+    <div class="field"><label for="class-name">Nome da turma</label><input id="class-name" type="text" placeholder="Ex.: Turma B"></div>
+    <div class="field"><label for="notes">Observações <span>(opcional)</span></label><textarea id="notes" rows="3" placeholder="Inclua informações úteis para a equipe."></textarea></div>
+  </form></section>
+  <section class="component-section" aria-labelledby="states-title"><h2 id="states-title">Estados</h2><div class="state-grid">
+    {{ empty_state("Nenhuma turma encontrada", "Ajuste os filtros ou cadastre uma nova turma.", "Cadastrar turma", "#") }}
+    <div class="loading-state" aria-label="Carregando conteúdo"><span></span><span></span><span></span><span></span></div>
+  </div></section>
+  <section class="component-section" aria-labelledby="tags-title"><h2 id="tags-title">Situações</h2><div class="component-row">{{ status_tag("Ativo", "success") }}{{ status_tag("Pendente", "warning") }}{{ status_tag("Inativo", "neutral") }}{{ status_tag("Acesso condicionado", "info") }}</div></section>
+{% endblock %}
+

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import empty_state %}
+{% block content %}
+  <div class="error-page">{{ empty_state("Algo não funcionou", "Tente novamente. Se o problema continuar, retorne ao início.", "Voltar ao início") }}</div>
+{% endblock %}
+

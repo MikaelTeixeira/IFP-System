@@ -1,0 +1,23 @@
+{% macro metric_cards(report) %}
+  <div class="report-metrics" aria-label="Indicadores principais">
+    <article class="report-metric report-metric--featured"><span>Média geral</span><strong>{{ ('%.1f'|format(report.average))|replace('.', ',') }}</strong><small>de 10 pontos</small></article>
+    <article class="report-metric"><span>Frequência</span><strong>{{ ('%.1f'|format(report.attendance))|replace('.', ',') }}%</strong><small>no período</small></article>
+    <article class="report-metric"><span>Faltas</span><strong>{{ report.absences }}</strong><small>registros no período</small></article>
+    <article class="report-metric"><span>Estudantes</span><strong>{{ report.students }}</strong><small>no recorte atual</small></article>
+  </div>
+{% endmacro %}
+
+{% macro chart(title, description, config, chart_type='line') %}
+  <article class="report-chart-card">
+    <header><div><h2>{{ title }}</h2><p>{{ description }}</p></div><span class="chart-type">{% if chart_type == 'line' %}Gráfico de linhas{% else %}Gráfico de colunas{% endif %}</span></header>
+    <div class="report-chart" data-report-chart="{{ chart_type }}">
+      <script type="application/json" data-chart-config>{{ config|tojson }}</script>
+      <div class="report-chart__canvas" data-chart-canvas aria-label="{{ title }}"></div>
+      <div class="report-chart__legend" data-chart-legend></div>
+      <div class="report-chart__fallback">
+        <table><thead><tr><th>Período</th>{% for dataset in config.datasets %}<th>{{ dataset.label }}</th>{% endfor %}</tr></thead>
+        <tbody>{% for label in config.labels %}{% set label_index = loop.index0 %}<tr><td>{{ label }}</td>{% for dataset in config.datasets %}<td>{{ dataset.values[label_index] }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+      </div>
+    </div>
+  </article>
+{% endmacro %}

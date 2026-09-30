@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('assessments.list_assessments') }}">Simulados</a> <span aria-hidden="true">/</span> {{ page_title }}</p><h1>{{ page_title }}</h1><p>Configure a avaliação e escolha questões do banco de Matemática.</p></div></header>
+  <form class="assessment-form" method="post">
+    <section class="form-section"><div class="form-section__heading"><span>1</span><div><h2>Informações gerais</h2><p>Defina nome, público e modo de aplicação.</p></div></div><div class="edit-form__fields">
+      <div class="field field--wide"><label for="titulo">Título</label><input id="titulo" name="titulo" value="{{ assessment.get('titulo', '') }}" placeholder="Ex.: Simulado de operações primárias"></div>
+      <div class="field"><label for="modalidade">Modalidade</label><select id="modalidade" name="modalidade">{% for value in ['Remoto', 'Presencial'] %}<option value="{{ value }}"{% if assessment.get('modalidade') == value %} selected{% endif %}>{{ value }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="publico">Público</label><input id="publico" name="publico" value="{{ assessment.get('publico', '7º ano') }}"></div>
+      <div class="field"><label for="duracao">Duração em minutos</label><input id="duracao" name="duracao" type="number" min="1" value="{{ assessment.get('duracao', 40) }}"></div>
+      <div class="field"><label for="data">Data</label><input id="data" name="data" value="{{ assessment.get('data', '') }}" placeholder="DD/MM/AAAA"></div>
+      <div class="field field--wide"><label for="descricao">Descrição</label><textarea id="descricao" name="descricao" rows="3">{{ assessment.get('descricao', '') }}</textarea></div>
+      <label class="field field--wide checkbox-field"><input type="checkbox" name="tentativa_unica" value="1"{% if assessment.get('tentativa_unica', True) %} checked{% endif %}><span><strong>Permitir somente uma tentativa</strong><small>Após a entrega definitiva, o aluno poderá apenas consultar o resultado.</small></span></label>
+    </div></section>
+    <section class="form-section"><div class="form-section__heading"><span>2</span><div><h2>Questões</h2><p>Selecione itens das quatro operações para compor a prova.</p></div></div><div class="question-picker">{% for question in questions %}<label><input type="checkbox" name="question_ids" value="{{ question.id }}"{% if question.id in assessment.get('question_ids', []) %} checked{% endif %}><span><small>{{ question.operacao }} · {{ question.dificuldade }}</small><strong>{{ question.enunciado|question_text }}</strong></span></label>{% endfor %}</div></section>
+    <section class="form-section"><div class="form-section__heading"><span>3</span><div><h2>Instituições</h2><p>Escolha onde o simulado ficará disponível.</p></div></div><div class="institution-picker">{% for institution in institutions %}<label><input type="checkbox" name="institution_ids" value="{{ institution.id }}"{% if institution.id in assessment.get('instituicao_ids', []) %} checked{% endif %}><span>{{ institution.nome }}</span></label>{% endfor %}</div></section>
+    <div class="form-actions"><a class="button button--secondary" href="{{ url_for('assessments.list_assessments') }}">Cancelar</a><button class="button button--primary" type="submit">Salvar simulado</button></div>
+  </form>
+{% endblock %}

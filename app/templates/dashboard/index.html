@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+  <header class="welcome-header">
+    <div><p class="breadcrumb">Início</p><h1>{{ page_title }}</h1><p>{{ page_description }}</p></div>
+    <div class="welcome-date"><span>Período atual</span><strong>2026</strong></div>
+  </header>
+  <section class="dashboard-summary" aria-labelledby="summary-title">
+    <div class="section-heading"><div><h2 id="summary-title">Seu espaço de trabalho</h2><p>Acesse as informações disponíveis para o seu perfil.</p></div></div>
+    <div class="summary-list">
+      {% for label, value, endpoint, parameters in summary %}
+        <a class="summary-row" href="{{ url_for(endpoint, **parameters) }}"><span><strong>{{ label }}</strong><small>Consultar informações</small></span><b>{{ value }}</b><span aria-hidden="true">›</span></a>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="guidance-panel"><div class="guidance-panel__mark" aria-hidden="true">i</div><div><h2>Ambiente de demonstração</h2><p>Cadastros administrativos, tentativas, respostas, arquivos, revisões e notificações usam o banco local. Parte do conteúdo acadêmico ainda é restaurada quando o servidor reinicia.</p></div></section>
+{% endblock %}

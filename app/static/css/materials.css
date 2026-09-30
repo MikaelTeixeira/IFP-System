@@ -1,0 +1,39 @@
+.material-feed { display: grid; gap: 18px; max-width: 900px; }
+.material-post { overflow: hidden; background: white; border: 1px solid var(--border-default); border-radius: var(--radius-medium); box-shadow: 0 3px 12px rgb(29 41 66 / 5%); }
+.material-post__header { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--border-default); }
+.material-post__avatar { display: grid; width: 42px; height: 42px; place-items: center; color: white; background: var(--brand-navy-700); border-bottom: 3px solid var(--brand-orange-500); border-radius: 50%; font-size: .78rem; font-weight: 800; }
+.material-post__header h2 { margin: 0; font-size: 1.15rem; }
+.material-post__header p { margin: 2px 0 0; color: var(--text-muted); font-size: .84rem; }
+.material-post__body { padding: 22px; }
+.material-post__body > strong { color: var(--brand-orange-700); font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+.material-post__description { margin: 6px 0 16px; color: var(--brand-navy-900); font-size: 1.03rem; font-weight: 750; }
+.material-post__text { max-width: 72ch; padding: 16px 18px; color: var(--text-primary); background: var(--surface-page); border-left: 3px solid var(--brand-navy-500); border-radius: 0 var(--radius-small) var(--radius-small) 0; line-height: 1.65; }
+.material-attachment { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 12px; max-width: 470px; margin-top: 16px; padding: 12px; color: var(--text-primary); text-decoration: none; background: white; border: 1px solid var(--border-default); border-radius: var(--radius-small); }
+.material-attachment:hover { color: var(--brand-navy-900); border-color: var(--brand-orange-500); }
+.material-attachment > span { display: grid; width: 50px; height: 50px; place-items: center; color: white; background: var(--brand-orange-700); border-radius: var(--radius-small); font-size: .72rem; font-weight: 900; }
+.material-attachment > div { display: grid; min-width: 0; }
+.material-attachment strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.material-attachment small { color: var(--text-muted); }
+.material-post footer { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 12px 22px; color: var(--text-muted); background: #fafbfc; border-top: 1px solid var(--border-default); font-size: .82rem; }
+.material-post footer strong { padding: 3px 8px; color: var(--brand-navy-700); background: var(--brand-navy-100); border-radius: 99px; }
+.material-post__actions { display: flex; gap: 6px; margin-left: auto; }
+.button--danger-quiet { color: var(--state-danger); background: transparent; border-color: transparent; }
+.button--danger-quiet:hover { background: var(--state-danger-soft); border-color: #e0aaaa; }
+.material-form__classes, .material-form__text, .material-form__attachment { grid-column: 1 / -1; }
+.material-form__classes { margin: 0; padding: 0; border: 0; }
+.material-form__classes legend { color: var(--brand-navy-900); font-weight: 750; }
+.material-form__classes > small { color: var(--text-muted); }
+.material-form__classes > div { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }
+.material-form__classes label { padding: 10px 13px; background: var(--surface-page); border: 1px solid var(--border-default); border-radius: var(--radius-small); cursor: pointer; }
+.material-form__classes label:has(input:checked) { background: var(--brand-orange-100); border-color: var(--brand-orange-500); }
+.material-form__attachment input { padding: 8px; background: var(--surface-page); border: 1px dashed #aeb7c6; }
+.material-form__current-file { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 10px; padding: 12px 14px; color: var(--text-primary); background: var(--brand-navy-100); border-radius: var(--radius-small); }
+.material-form__current-file > span:last-child { white-space: nowrap; }
+@media (max-width: 767px) {
+  .material-post__header { grid-template-columns: 44px 1fr; padding: 16px; }
+  .material-post__header .status-tag { grid-column: 2; justify-self: start; }
+  .material-post__body { padding: 18px 16px; }
+  .material-post footer { padding: 12px 16px; }
+  .material-post__actions { width: 100%; margin: 8px 0 0; }
+  .material-form__current-file { align-items: flex-start; flex-direction: column; }
+}

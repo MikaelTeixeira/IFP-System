@@ -1,0 +1,13 @@
+.user-filter-bar { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)) auto; align-items: end; }
+.user-filter-bar .field { min-width: 0; }
+.user-filter-bar__actions { display: flex; gap: 8px; }
+.user-table { min-width: 980px; }
+.user-table td:first-child { color: var(--brand-navy-900); }
+@media (max-width: 1100px) {
+  .user-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .user-filter-bar__actions { grid-column: 1 / -1; }
+}
+@media (max-width: 767px) {
+  .user-filter-bar { grid-template-columns: 1fr; }
+  .user-filter-bar__actions { grid-column: auto; display: grid; }
+}
