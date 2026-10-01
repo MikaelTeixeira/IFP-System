@@ -53,6 +53,44 @@ def test_report_drills_down_from_series_to_class(client):
     assert "Ana Clara Souza" in class_content
 
 
+def test_report_metrics_open_student_relations_and_school_history(client):
+    from app.models import StudentAttendanceSummary
+
+    login_as(client, "school_coordinator")
+    school = client.get("/relatorios/escolas/inst-001").get_data(as_text=True)
+    assert "/relatorios/escolas/inst-001/estudantes/frequencia" in school
+    assert "/relatorios/escolas/inst-001/estudantes/faltas" in school
+    assert "/relatorios/escolas/inst-001/estudantes/todos" in school
+    assert "/relatorios/escolas/inst-001/historico" in school
+
+    attendance = client.get("/relatorios/escolas/inst-001/estudantes/frequencia")
+    assert attendance.status_code == 200
+    attendance_content = attendance.get_data(as_text=True)
+    assert "Estudantes que compareceram" in attendance_content
+    assert "Ana Clara Souza" in attendance_content
+
+    absences = client.get("/relatorios/escolas/inst-001/estudantes/faltas")
+    assert absences.status_code == 200
+    assert "Estudantes que faltaram" in absences.get_data(as_text=True)
+    assert "Sofia Ribeiro" in absences.get_data(as_text=True)
+
+    all_students = client.get("/relatorios/escolas/inst-001/estudantes/todos")
+    all_content = all_students.get_data(as_text=True)
+    assert "Relação total de estudantes" in all_content
+    assert "Ana Clara Souza" in all_content and "Sofia Ribeiro" in all_content
+
+    scoped = client.get("/relatorios/escolas/inst-001/estudantes/todos?series_id=ser-003&class_id=tur-001").get_data(as_text=True)
+    assert "Ana Clara Souza" in scoped and "João Pedro Alves" in scoped
+    assert "Mariana Costa" not in scoped
+
+    history = client.get("/relatorios/escolas/inst-001/historico")
+    assert history.status_code == 200
+    assert "Histórico da escola" in history.get_data(as_text=True)
+    assert "2026" in history.get_data(as_text=True)
+    with client.application.app_context():
+        assert StudentAttendanceSummary.query.count() == 7
+
+
 def test_reports_reject_unrelated_profiles(client):
     login_as(client, "teacher")
     assert client.get("/relatorios/").status_code == 403
@@ -62,6 +100,26 @@ def test_entry_redirects_to_login(client):
     response = client.get("/")
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/acesso")
+
+
+def test_unread_notifications_use_a_visible_numeric_badge(client):
+    from app.data.notifications import add_role_notification
+
+    login_as(client, "teacher")
+    with client.application.app_context():
+        add_role_notification(
+            "teacher", "pro-001", "Nova solicitação", "Você recebeu uma nova solicitação.",
+            "/simulados/solicitacoes", "assessment_request",
+        )
+
+    dashboard = client.get("/inicio").get_data(as_text=True)
+    assert 'class="icon-button notification-button has-unread"' in dashboard
+    assert 'aria-label="Notificações: 1 não lida"' in dashboard
+    assert 'class="notification-button__badge" aria-hidden="true">1</span>' in dashboard
+
+    client.get("/notificacoes")
+    dashboard_after_reading = client.get("/inicio").get_data(as_text=True)
+    assert "notification-button__badge" not in dashboard_after_reading
 
 
 def test_free_login_accepts_empty_fields(client):
@@ -205,6 +263,8 @@ def test_school_coordinator_requests_assessment_instead_of_scheduling(client):
         "materia_ids": ["mat-001", "mat-002"],
         "professor_mat-001": "pro-001",
         "professor_mat-002": "pro-002",
+        "quantidade_mat-001": "3",
+        "quantidade_mat-002": "2",
         "prazo": "2026-10-10",
         "observacoes": "Priorizar os conteúdos do segundo bimestre.",
     }, follow_redirects=True)
@@ -213,8 +273,8 @@ def test_school_coordinator_requests_assessment_instead_of_scheduling(client):
     assert assessment_request["instituicao_id"] == "inst-001"
     assert assessment_request["serie_ids"] == ["ser-002", "ser-003"]
     assert assessment_request["atribuicoes"] == [
-        {"materia_id": "mat-001", "professor_id": "pro-001", "entregas": []},
-        {"materia_id": "mat-002", "professor_id": "pro-002", "entregas": []},
+        {"materia_id": "mat-001", "professor_id": "pro-001", "quantidade_questoes": 3, "entregas": []},
+        {"materia_id": "mat-002", "professor_id": "pro-002", "quantidade_questoes": 2, "entregas": []},
     ]
     assert "Priorizar os conteúdos" in response.get_data(as_text=True)
 
@@ -230,6 +290,7 @@ def test_assessment_request_rejects_teacher_outside_subject_or_school(client):
         "serie_ids": "ser-003",
         "materia_ids": "mat-001",
         "professor_mat-001": "pro-004",
+        "quantidade_mat-001": "5",
     })
     assert response.status_code == 400
     assert "professor habilitado" in response.get_data(as_text=True)
@@ -422,6 +483,20 @@ def test_student_dashboard_shows_assessments_and_review(client):
     assert response.status_code == 200
     assert "Meus simulados" in content
     assert "Materiais de revisão" in content
+    assert 'class="role-student"' in content
+    assert "student-home-hero" in content
+    assert "O que você quer fazer?" in content
+
+
+def test_student_assessment_interface_shows_clear_actions_and_progress(client):
+    login_as(client, "student")
+    listing = client.get("/aluno/simulados").get_data(as_text=True)
+    test_page = client.get("/aluno/simulados/sim-2026-001/responder").get_data(as_text=True)
+    assert "student-assessment-card__action" in listing
+    assert "Ver simulado" in listing
+    assert "data-assessment-progress" in test_page
+    assert "data-answered-count" in test_page
+    assert 'aria-valuemax="8"' in test_page
 
 
 def test_student_sees_only_safe_assessment_view(client):
@@ -480,6 +555,40 @@ def test_student_review_contains_primary_operations(client):
     assert "Subtração" in content
     assert "Multiplicação" in content
     assert "Divisão" in content
+
+
+def test_review_materials_are_grouped_by_subject_and_topic(client):
+    from app.data.materials import add_material
+
+    with client.application.app_context():
+        add_material({
+            "titulo": "Leitura guiada",
+            "descricao": "Roteiro de interpretação de texto.",
+            "texto": "Leia o texto e identifique a ideia principal.",
+            "professor_id": "pro-002",
+            "materia_id": "mat-002",
+            "assunto_id": "ass-003",
+            "turma_ids": ["tur-001"],
+            "anexo": None,
+        })
+
+    login_as(client, "student")
+    content = client.get("/aluno/revisao").get_data(as_text=True)
+    assert 'id="materia-mat-001"' in content
+    assert 'id="materia-mat-002"' in content
+    assert 'id="assunto-ass-001-titulo"' in content
+    assert 'id="assunto-ass-003-titulo"' in content
+    assert "Guia de operações primárias" in content
+    assert "Leitura guiada" in content
+
+
+def test_material_form_explains_subject_and_topic_classification(client):
+    login_as(client, "teacher")
+    content = client.get("/materiais/novo").get_data(as_text=True)
+    assert "Organização na biblioteca" in content
+    assert "Gerenciar meus assuntos" in content
+    assert 'data-subject-select required' in content
+    assert 'data-topic-select required' in content
 
 
 def test_teacher_publishes_review_material_for_linked_class(client):
@@ -832,6 +941,7 @@ def test_requested_assessment_flows_from_teacher_to_student_notification(client)
         "serie_ids": "ser-003",
         "materia_ids": "mat-001",
         "professor_mat-001": "pro-001",
+        "quantidade_mat-001": "1",
         "prazo": "2026-10-20",
         "observacoes": "Enviar uma questão sobre operações primárias.",
     })
@@ -894,12 +1004,13 @@ def test_requested_assessment_flows_from_teacher_to_student_notification(client)
     assert "Simulado de fluxo" in client.get("/aluno/simulados").get_data(as_text=True)
 
 
-def test_teacher_can_create_a_new_question_from_assessment_request(client):
+def test_new_question_is_saved_only_in_bank_even_with_stale_request_data(client):
     from app.data.assessments import ASSESSMENT_REQUESTS
 
     login_as(client, "school_coordinator")
     client.post("/simulados/solicitar", data={
         "serie_ids": "ser-003", "materia_ids": "mat-001", "professor_mat-001": "pro-001",
+        "quantidade_mat-001": "1",
         "prazo": "2026-10-22",
     })
     assessment_request = ASSESSMENT_REQUESTS[0]
@@ -912,8 +1023,55 @@ def test_teacher_can_create_a_new_question_from_assessment_request(client):
         "explicacao": "Há diferentes estratégias válidas.",
     }, follow_redirects=True)
     assert response.status_code == 200
-    assert "Nova questão salva e enviada" in response.get_data(as_text=True)
-    assert assessment_request["atribuicoes"][0]["entregas"][0]["origem"] == "Nova"
+    assert "Questão salva no banco de dados" in response.get_data(as_text=True)
+    assert assessment_request["atribuicoes"][0]["entregas"] == []
+
+
+def test_teacher_must_send_exact_requested_question_count(client):
+    from app.data.assessments import ASSESSMENT_REQUESTS
+    from app.data.questions import QUESTIONS
+
+    login_as(client, "school_coordinator")
+    client.post("/simulados/solicitar", data={
+        "serie_ids": "ser-003", "materia_ids": "mat-001", "professor_mat-001": "pro-001",
+        "quantidade_mat-001": "2", "prazo": "2026-10-22",
+    })
+    assessment_request = ASSESSMENT_REQUESTS[0]
+    assignment = assessment_request["atribuicoes"][0]
+    request_url = f"/simulados/solicitacoes/{assessment_request['id']}/responder?materia_id=mat-001"
+    question_ids = [
+        item["id"] for item in QUESTIONS
+        if item.get("autor_id") == "pro-001" and item.get("materia_id") == "mat-001"
+    ][:3]
+    assert len(question_ids) == 3
+
+    login_as(client, "teacher")
+    page = client.get(request_url).get_data(as_text=True)
+    assert "Criar nova questão" not in page
+    assert 'data-required-count="2"' in page
+    assert "0 de 2 selecionadas" in page
+    assert "data-question-selection-dialog" in page
+
+    too_few = client.post(request_url, data={
+        "materia_id": "mat-001", "bank_question_ids": question_ids[:1],
+    })
+    assert too_few.status_code == 400
+    assert "Selecione exatamente 2" in too_few.get_data(as_text=True)
+    assert assignment["entregas"] == []
+
+    too_many = client.post(request_url, data={
+        "materia_id": "mat-001", "bank_question_ids": question_ids,
+    })
+    assert too_many.status_code == 400
+    assert "Selecione exatamente 2" in too_many.get_data(as_text=True)
+    assert assignment["entregas"] == []
+
+    exact = client.post(request_url, data={
+        "materia_id": "mat-001", "bank_question_ids": question_ids[:2],
+    }, follow_redirects=True)
+    assert exact.status_code == 200
+    assert "Questões enviadas" in exact.get_data(as_text=True)
+    assert len(assignment["entregas"]) == 2
 
 
 def test_question_revision_has_history_states_filter_approval_and_notifications(client):
@@ -1004,11 +1162,18 @@ def test_attempt_recovers_answers_blocks_second_submission_and_open_answer_is_gr
     login_as(client, "teacher")
     queue = client.get("/simulados/correcoes").get_data(as_text=True)
     assert "Simulado persistente" in queue
+    assert "Solicitações de correção" in queue
+    assert "Histórico de correções" in queue
+    assert 'id="correcoes-pendentes"' in queue
     corrected = client.post(f"/simulados/correcoes/{attempt_id}", data={
         f"nota_{answer_id}": "0.8", f"conceito_{answer_id}": "Muito bom",
         f"comentario_{answer_id}": "A relação entre grupos foi explicada corretamente.",
     }, follow_redirects=True)
     assert "Correção salva" in corrected.get_data(as_text=True)
+    assert "Nenhuma correção pendente" in corrected.get_data(as_text=True)
+    assert 'id="historico-correcoes"' in corrected.get_data(as_text=True)
+    assert "Ver correção" in corrected.get_data(as_text=True)
+    assert "média <strong>0.8</strong> de 1" in corrected.get_data(as_text=True)
 
     login_as(client, "student")
     result = client.get(f"/aluno/simulados/{assessment['id']}/resultado").get_data(as_text=True)

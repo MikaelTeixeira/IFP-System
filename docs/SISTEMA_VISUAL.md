@@ -2,10 +2,14 @@
 
 ## Conceito
 
-A interface combina a organização de um ambiente institucional com sinais
-visuais acolhedores ligados ao cotidiano escolar. A personalidade virá da cor,
-da tipografia e de uma faixa contextual que acompanha a navegação acadêmica.
-Ela não dependerá de uma coleção de cartões iguais.
+A interface segue o conceito de **caderno institucional**: superfícies em
+marfim lembram o papel, o azul funciona como tinta estrutural e o laranja marca
+ações, seleções e pontos de atenção. A linguagem é acolhedora sem perder a
+sobriedade necessária para rotinas acadêmicas e administrativas.
+
+A personalidade vem da marca compacta, dos títulos firmes, da iconografia
+linear, dos divisores precisos e da faixa contextual acadêmica. Listas e tabelas
+continuam sendo preferidas a coleções de cartões iguais.
 
 ## Tokens de cor
 
@@ -25,11 +29,14 @@ Ela não dependerá de uma coleção de cartões iguais.
 
 | Token | Valor | Uso |
 | --- | --- | --- |
-| `surface-page` | `#F6F7F9` | Fundo geral |
-| `surface-panel` | `#FFFFFF` | Superfícies principais |
-| `text-primary` | `#202735` | Texto corrido |
-| `text-muted` | `#667085` | Apoio e metadados |
-| `border-default` | `#D8DDE6` | Bordas e divisores |
+| `surface-page` | `#F6F4EF` | Fundo geral em marfim |
+| `surface-panel` | `#FFFEFA` | Superfícies principais |
+| `surface-subtle` | `#EEECE6` | Filtros e áreas rebaixadas |
+| `surface-navy-soft` | `#E9EDF4` | Apoio institucional suave |
+| `text-primary` | `#202838` | Texto corrido |
+| `text-muted` | `#626B79` | Apoio e metadados |
+| `border-default` | `#D9D8D2` | Bordas e divisores |
+| `border-strong` | `#B9BDC4` | Controles e limites reforçados |
 | `state-success` | `#277454` | Confirmações |
 | `state-warning` | `#9A6512` | Atenção |
 | `state-danger` | `#A33A3A` | Erro ou ação destrutiva |
@@ -41,22 +48,23 @@ quando o contraste for insuficiente. Nessas situações será usada a variação
 
 ## Tipografia
 
-- **Família principal:** `Nunito Sans`, com `Arial` e `sans-serif` como fallback.
+- **Família principal:** `Aptos`, com `Segoe UI Variable Text`, `Trebuchet MS`
+  e `sans-serif` como alternativas locais.
 - **Títulos:** pesos 700 e 800, com entrelinha compacta.
 - **Texto e controles:** pesos 400, 600 e 700.
 - **Escala:** 14, 16, 18, 22, 28 e 36 px.
 - **Comprimento de leitura:** até 72 caracteres em textos explicativos.
 
-Nunito Sans oferece formas acolhedoras sem perder a clareza necessária para
-listas, filtros e tarefas administrativas. A fonte deverá ser servida localmente
-para a aplicação não depender de uma conexão externa.
+A pilha tipográfica usa famílias humanistas já disponíveis no sistema, mantendo
+clareza em listas, filtros e tarefas administrativas sem depender de conexão
+externa para carregar fontes.
 
 ## Espaçamento e forma
 
 - Unidade base de espaçamento: 4 px.
 - Espaçamentos principais: 8, 12, 16, 24, 32 e 48 px.
-- Raio pequeno: 6 px para campos e controles.
-- Raio médio: 10 px para painéis e mensagens.
+- Raio pequeno: 8 px para campos e controles.
+- Raio médio: 14 px para painéis e mensagens.
 - Sombras reservadas a menus flutuantes, diálogos e elementos elevados.
 - Listas administrativas usarão linhas e agrupamentos, evitando transformar cada
   registro em um cartão isolado.
@@ -78,7 +86,7 @@ orientação, filtro e confirmação de escopo, especialmente para coordenadores
 | Componente | Uso |
 | --- | --- |
 | Cabeçalho | Marca, acesso ao perfil, avisos e ação de menu em telas menores |
-| Navegação lateral | Módulos permitidos e indicação da seção ativa |
+| Navegação lateral | Módulos agrupados por tarefa, ícones lineares e seção ativa |
 | Faixa de contexto | Hierarquia e escopo acadêmico atual |
 | Cabeçalho de página | Título, explicação curta e ação principal |
 | Breadcrumb | Retorno dentro da hierarquia |
@@ -142,6 +150,19 @@ Mantém a ação visível e desabilitada, com explicação acessível por texto.
 Exibe uma página própria, identifica que o perfil atual não possui acesso e
 oferece retorno ao início ou ao nível anterior permitido.
 
+## Experiência do Aluno
+
+- O painel inicial do Aluno usa uma apresentação mais acolhedora, com ações
+  inteiras clicáveis e destaque imediato para simulados e materiais.
+- Botões de ação usam maior contraste, área de clique ampliada e movimento curto
+  no hover para indicar continuidade.
+- Listas de simulados distinguem visualmente tentativas não iniciadas, em
+  andamento e com resultado disponível.
+- Durante o simulado, uma barra fixa informa quantas questões foram respondidas
+  e atualiza o progresso sem recarregar a página.
+- Animações de entrada e resposta são discretas e respeitam a preferência do
+  sistema por movimento reduzido.
+
 ## Responsividade
 
 - Desktop a partir de 1024 px: navegação lateral persistente e tabelas completas.
@@ -156,8 +177,12 @@ oferece retorno ao início ou ao nível anterior permitido.
 - Contraste compatível com WCAG AA para textos e controles essenciais.
 - Rótulos explícitos em formulários.
 - Ícones decorativos ignorados por leitores de tela.
+- Um único conjunto de SVGs lineares substitui símbolos tipográficos e mantém
+  peso, alinhamento e significado consistentes.
 - Estados nunca comunicados apenas por cor.
 - Respeito à preferência de movimento reduzido.
+- Em telas menores, o menu fechado fica fora da ordem de foco e só volta a ser
+  navegável quando for aberto.
 
 ## Autocrítica da direção
 

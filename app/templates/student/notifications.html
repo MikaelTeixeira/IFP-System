@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% from "macros/ui.html" import empty_state %}
+{% from "macros/icons.html" import icon %}
 {% block content %}
-  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Notificações</p><h1>Notificações</h1><p>Acompanhe solicitações, revisões, resultados e novos conteúdos.</p></div></header>
+  <header class="page-header student-page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Notificações</p><h1>Notificações</h1><p>Acompanhe novos simulados, resultados e materiais publicados.</p></div>{% if notifications %}<span class="student-page-header__count"><strong>{{ notifications|length }}</strong> {{ 'aviso' if notifications|length == 1 else 'avisos' }}</span>{% endif %}</header>
   {% if notifications %}<section class="notification-list" aria-label="Notificações recebidas">
-    {% for item in notifications %}<article class="notification-card"><div><span class="notification-card__mark" aria-hidden="true">✓</span><div><small>{{ item.criada_em }}</small><h2>{{ item.titulo }}</h2><p>{{ item.mensagem }}</p></div></div><a class="button button--quiet" href="{{ item.url }}">Abrir aviso</a></article>{% endfor %}
+    {% for item in notifications %}<article class="notification-card"><div><span class="notification-card__mark" aria-hidden="true">{{ icon('notification') }}</span><div><small>{{ item.criada_em }}</small><h2>{{ item.titulo }}</h2><p>{{ item.mensagem }}</p></div></div><a class="button student-notification-action" href="{{ item.url }}">Abrir aviso {{ icon('chevron-right') }}</a></article>{% endfor %}
   </section>{% else %}{{ empty_state("Nenhuma notificação", "Quando um simulado for agendado para sua turma, o aviso aparecerá aqui.") }}{% endif %}
 {% endblock %}

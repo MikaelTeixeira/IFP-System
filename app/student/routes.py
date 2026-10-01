@@ -5,7 +5,7 @@ from ..auth.security import current_profile, roles_required
 from ..data.academic import DATA, find
 from ..data.assessments import ASSESSMENTS, find_assessment
 from ..data.curriculum import subject_name, topic_name
-from ..data.materials import MATERIAL_POSTS
+from ..data.materials import MATERIAL_POSTS, group_materials
 from ..data.questions import find_question
 from ..data.notifications import mark_profile_notifications_read, notifications_for_student
 from ..data.notifications import add_role_notification
@@ -182,5 +182,6 @@ def review():
         "student/review.html",
         page_title="Materiais de revisão",
         materials=materials,
+        material_groups=group_materials(materials),
         active_navigation="revisao",
     )

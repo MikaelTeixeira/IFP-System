@@ -61,3 +61,6 @@ As médias dos relatórios usam resultados concluídos do banco quando o recorte
 possui tentativas disponíveis. Na ausência deles, a interface usa uma base
 demonstrativa estável para preservar a navegação. Frequência, faltas e evolução
 mensal também são demonstrativas até a implementação de um diário de frequência.
+Os relatórios guardam no MySQL um resumo demonstrativo por estudante, com
+percentual, quantidade de faltas e estado do último registro. Os cartões de
+frequência e faltas usam esse último registro para formar as relações nominais.

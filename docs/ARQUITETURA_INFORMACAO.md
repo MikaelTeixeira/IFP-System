@@ -81,7 +81,9 @@ aparecerão como links vazios no menu.
 | `/aluno/simulados/<id>/responder` | Responder simulado | Persistir respostas, tempo e entrega e mostrar o resultado |
 | `/aluno/simulados/<id>/salvar` | Salvar tentativa | Persistir respostas parciais e tempo restante |
 | `/aluno/simulados/<id>/resultado` | Resultado | Mostrar situação, pontuação e comentários da correção |
-| `/simulados/correcoes` | Correções abertas | Professor consulta respostas abertas de sua autoria |
+| `/simulados/correcoes` | Correções | Professor consulta solicitações pendentes e o histórico das respostas abertas que corrigiu |
+| `/relatorios/escolas/<id>/estudantes/<visao>` | Relações de frequência | Coordenações consultam estudantes presentes, ausentes ou todos no recorte selecionado |
+| `/relatorios/escolas/<id>/historico` | Histórico da escola | Coordenações consultam os períodos letivos disponíveis para a escola |
 | `/simulados/correcoes/<tentativa>` | Corrigir respostas | Informar nota, conceito e comentário para o aluno |
 | `/notificacoes` | Notificações | Exibir os avisos persistidos para o perfil atual |
 | `/aluno/revisao` | Materiais de revisão | Consultar postagens destinadas à turma do aluno |
@@ -203,6 +205,9 @@ global, o caminho será encurtado para evitar uma trilha artificial.
   barreiras de impressão, área de transferência e exposição ao perder o foco.
 - Início, respostas parciais, entrega, tempo restante, pontuação e correções das
   tentativas são persistidos no banco.
+- Solicitações registram a quantidade de questões por matéria. O Professor envia
+  exatamente esse total a partir do banco ou histórico, com validação no navegador
+  e no servidor; a criação de novas questões permanece no Banco de questões.
 - Arquivos ficam fora da pasta pública e são servidos somente após a validação do
   perfil e do vínculo com a questão, publicação ou turma.
 - Identificadores técnicos não serão usados como títulos principais das páginas.

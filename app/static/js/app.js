@@ -1,22 +1,33 @@
 const shell = document.querySelector("[data-app-shell]");
 const menuToggle = document.querySelector("[data-menu-toggle]");
 const menuClose = document.querySelector("[data-menu-close]");
+const sidebar = document.querySelector("[data-sidebar]");
 
-function setMenu(open) {
+function setMenu(open, restoreFocus = false) {
   if (!shell || !menuToggle) return;
-  shell.classList.toggle("menu-open", open);
-  menuToggle.setAttribute("aria-expanded", String(open));
-  document.body.style.overflow = open ? "hidden" : "";
+  const compact = window.innerWidth < 1024;
+  const shouldOpen = compact && open;
+  shell.classList.toggle("menu-open", shouldOpen);
+  menuToggle.setAttribute("aria-expanded", String(shouldOpen));
+  document.body.style.overflow = shouldOpen ? "hidden" : "";
+  if (sidebar) {
+    sidebar.toggleAttribute("inert", compact && !shouldOpen);
+    if (compact && !shouldOpen) sidebar.setAttribute("aria-hidden", "true");
+    else sidebar.removeAttribute("aria-hidden");
+  }
+  if (shouldOpen) window.requestAnimationFrame(() => sidebar?.querySelector(".nav-link")?.focus());
+  else if (restoreFocus) menuToggle.focus();
 }
 
 menuToggle?.addEventListener("click", () => setMenu(!shell.classList.contains("menu-open")));
-menuClose?.addEventListener("click", () => setMenu(false));
+menuClose?.addEventListener("click", () => setMenu(false, true));
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") setMenu(false);
+  if (event.key === "Escape" && shell?.classList.contains("menu-open")) setMenu(false, true);
 });
 window.addEventListener("resize", () => {
   if (window.innerWidth >= 1024) setMenu(false);
 });
+setMenu(false);
 
 const subjectSelect = document.querySelector("[data-subject-select]");
 const topicSelect = document.querySelector("[data-topic-select]");
@@ -24,6 +35,8 @@ const topicSelect = document.querySelector("[data-topic-select]");
 function updateTopicOptions(reset = false) {
   if (!subjectSelect || !topicSelect) return;
   const subjectId = subjectSelect.value;
+  const emptyOption = topicSelect.querySelector('option[value=""]');
+  if (emptyOption) emptyOption.textContent = subjectId ? "Selecione um assunto" : "Selecione a matéria primeiro";
   topicSelect.disabled = !subjectId;
   Array.from(topicSelect.options).forEach((option) => {
     if (!option.value) return;
@@ -70,6 +83,7 @@ updateScopeField();
 const studentAssessmentForm = document.querySelector("[data-student-assessment-form]");
 const answerWarning = document.querySelector("[data-answer-warning]");
 const missingQuestionsList = answerWarning?.querySelector("[data-missing-questions]");
+const assessmentProgress = document.querySelector("[data-assessment-progress]");
 
 function unansweredQuestions() {
   if (!studentAssessmentForm) return [];
@@ -80,6 +94,24 @@ function unansweredQuestions() {
       return !question.querySelector("input[type='radio']:checked");
     }
   );
+}
+
+function updateAssessmentProgress() {
+  if (!studentAssessmentForm || !assessmentProgress) return;
+  const questions = Array.from(studentAssessmentForm.querySelectorAll("[data-question-number]"));
+  const unanswered = unansweredQuestions();
+  const answered = questions.length - unanswered.length;
+  const answeredCount = assessmentProgress.querySelector("[data-answered-count]");
+  const progressBar = assessmentProgress.querySelector("[role='progressbar']");
+  const progressFill = assessmentProgress.querySelector("[data-progress-fill]");
+  if (answeredCount) answeredCount.textContent = String(answered);
+  if (progressBar) progressBar.setAttribute("aria-valuenow", String(answered));
+  if (progressFill) progressFill.style.width = `${questions.length ? (answered / questions.length) * 100 : 0}%`;
+  questions.forEach((question) => {
+    const answeredQuestion = !unanswered.includes(question);
+    question.classList.toggle("is-answered", answeredQuestion);
+    if (answeredQuestion) question.classList.remove("is-unanswered");
+  });
 }
 
 function showAnswerWarning(questions) {
@@ -156,10 +188,15 @@ const saveAssessmentProgress = async () => {
 };
 
 studentAssessmentForm?.addEventListener("input", () => {
+  updateAssessmentProgress();
   window.clearTimeout(assessmentSaveTimer);
   assessmentSaveTimer = window.setTimeout(saveAssessmentProgress, 600);
 });
-studentAssessmentForm?.addEventListener("change", saveAssessmentProgress);
+studentAssessmentForm?.addEventListener("change", () => {
+  updateAssessmentProgress();
+  saveAssessmentProgress();
+});
+updateAssessmentProgress();
 window.addEventListener("pagehide", () => {
   if (studentAssessmentForm?.dataset.saveUrl) {
     navigator.sendBeacon(studentAssessmentForm.dataset.saveUrl, new FormData(studentAssessmentForm));
@@ -290,7 +327,9 @@ function updateTeacherAssignments() {
   assessmentRequestForm.querySelectorAll("[data-assignment-subject]").forEach((row) => {
     const active = selectedSubjects.has(row.dataset.assignmentSubject);
     row.hidden = !active;
-    row.querySelector("select").disabled = !active;
+    row.querySelectorAll("select, input").forEach((field) => {
+      field.disabled = !active;
+    });
   });
   const emptyMessage = assessmentRequestForm.querySelector("[data-assignment-empty]");
   if (emptyMessage) emptyMessage.hidden = selectedSubjects.size > 0;
@@ -300,6 +339,76 @@ assessmentRequestForm?.querySelectorAll("[data-request-subject]").forEach((input
   input.addEventListener("change", updateTeacherAssignments);
 });
 updateTeacherAssignments();
+
+const requestQuestionPicker = document.querySelector("[data-request-question-picker]");
+const questionSelectionDialog = document.querySelector("[data-question-selection-dialog]");
+const questionSelectionMessage = questionSelectionDialog?.querySelector("[data-question-selection-message]");
+const requestQuestionOptions = requestQuestionPicker
+  ? Array.from(requestQuestionPicker.querySelectorAll("[data-request-question-option]"))
+  : [];
+let requestQuestionSelectionOrder = requestQuestionOptions.filter((option) => option.checked);
+
+function selectedRequestQuestions() {
+  return requestQuestionPicker
+    ? Array.from(requestQuestionPicker.querySelectorAll("[data-request-question-option]:checked"))
+    : [];
+}
+
+function showQuestionSelectionDialog(message) {
+  if (!questionSelectionDialog) return;
+  questionSelectionMessage.textContent = message;
+  if (!questionSelectionDialog.open) questionSelectionDialog.showModal();
+}
+
+function updateQuestionSelectionCounter() {
+  if (!requestQuestionPicker) return;
+  const required = Number(requestQuestionPicker.dataset.requiredCount);
+  const selected = selectedRequestQuestions().length;
+  const counter = requestQuestionPicker.querySelector("[data-question-selection-counter]");
+  if (counter) counter.textContent = `${selected} de ${required} selecionada${selected === 1 ? "" : "s"}`;
+}
+
+function questionCountLabel(count) {
+  return count === 1 ? "questão" : "questões";
+}
+
+requestQuestionOptions.forEach((option) => {
+  option.addEventListener("change", () => {
+    const required = Number(requestQuestionPicker.dataset.requiredCount);
+    requestQuestionSelectionOrder = requestQuestionSelectionOrder.filter((item) => item !== option);
+    if (option.checked) {
+      requestQuestionSelectionOrder.push(option);
+      if (selectedRequestQuestions().length > required) {
+        const replacedOption = [...requestQuestionSelectionOrder]
+          .reverse()
+          .find((item) => item !== option && item.checked);
+        if (replacedOption) {
+          replacedOption.checked = false;
+          requestQuestionSelectionOrder = requestQuestionSelectionOrder.filter((item) => item !== replacedOption);
+        }
+      }
+    }
+    updateQuestionSelectionCounter();
+  });
+});
+
+requestQuestionPicker?.addEventListener("submit", (event) => {
+  const required = Number(requestQuestionPicker.dataset.requiredCount);
+  const selected = selectedRequestQuestions().length;
+  if (selected === required) return;
+  event.preventDefault();
+  const missing = required - selected;
+  showQuestionSelectionDialog(
+    missing > 0
+      ? `Selecione mais ${missing} ${questionCountLabel(missing)}. A coordenação solicitou exatamente ${required}.`
+      : `Mantenha somente ${required} ${questionCountLabel(required)} ${required === 1 ? "selecionada" : "selecionadas"}.`
+  );
+});
+
+if (questionSelectionDialog?.hasAttribute("data-open-on-load") && !questionSelectionDialog.open) {
+  questionSelectionDialog.showModal();
+}
+updateQuestionSelectionCounter();
 
 document.querySelectorAll("[data-bold-target]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -356,6 +465,52 @@ if (protectedAssessment) {
     privacyScreen.hidden = true;
   });
 }
+
+function initializeCorrectionCarousel(section) {
+  const track = section.querySelector("[data-carousel-track]");
+  const items = Array.from(section.querySelectorAll("[data-carousel-item]"));
+  const previous = section.querySelector("[data-carousel-previous]");
+  const next = section.querySelector("[data-carousel-next]");
+  const position = section.querySelector("[data-carousel-position]");
+  if (!track || !items.length || !previous || !next || !position) return;
+
+  const itemStep = () => items[1]?.offsetLeft - items[0].offsetLeft || track.clientWidth;
+  const visibleItems = () => Math.max(1, Math.round(track.clientWidth / itemStep()));
+  const maximumIndex = () => Math.max(0, items.length - visibleItems());
+  const currentIndex = () => Math.min(maximumIndex(), Math.max(0, Math.round(track.scrollLeft / itemStep())));
+
+  function updateCarouselState() {
+    const index = currentIndex();
+    const visible = visibleItems();
+    const first = index + 1;
+    const last = Math.min(items.length, index + visible);
+    position.textContent = first === last ? `${first} de ${items.length}` : `${first}–${last} de ${items.length}`;
+    previous.disabled = index === 0;
+    next.disabled = index >= maximumIndex();
+  }
+
+  function goTo(index) {
+    const target = Math.min(maximumIndex(), Math.max(0, index));
+    track.scrollTo({ left: items[target].offsetLeft, behavior: "smooth" });
+  }
+
+  previous.addEventListener("click", () => goTo(currentIndex() - 1));
+  next.addEventListener("click", () => goTo(currentIndex() + 1));
+  track.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    goTo(currentIndex() + (event.key === "ArrowRight" ? 1 : -1));
+  });
+  let updateFrame;
+  track.addEventListener("scroll", () => {
+    cancelAnimationFrame(updateFrame);
+    updateFrame = requestAnimationFrame(updateCarouselState);
+  });
+  window.addEventListener("resize", updateCarouselState);
+  updateCarouselState();
+}
+
+document.querySelectorAll(".correction-carousel-section").forEach(initializeCorrectionCarousel);
 
 function renderReportChart(chart) {
   const configNode = chart.querySelector("[data-chart-config]");

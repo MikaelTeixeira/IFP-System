@@ -1,10 +1,70 @@
 {% extends "base.html" %}
 {% from "macros/ui.html" import status_tag %}
+{% from "macros/icons.html" import icon %}
 {% block content %}
-  {% set detailed = assessment_request.atribuicoes_detalhadas|selectattr('professor.id', 'equalto', current_profile.teacher_id)|first %}
-  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('assessments.teacher_requests') }}">Solicitações de questões</a> <span aria-hidden="true">/</span> Responder</p><h1>{{ detailed.materia.nome }}</h1><p>{{ assessment_request.titulo }} · entrega até <strong>{{ assessment_request.prazo }}</strong></p></div>{% if assessment_request.status not in ['Pronto para agendar', 'Agendado'] %}<a class="button button--primary" href="{{ url_for('questions.create', solicitacao_id=assessment_request.id, materia_id=assignment.materia_id) }}">Criar nova questão</a>{% endif %}</header>
+  <header class="page-header">
+    <div>
+      <p class="breadcrumb"><a href="{{ url_for('assessments.teacher_requests') }}">Solicitações de questões</a> <span aria-hidden="true">/</span> Responder</p>
+      <h1>{{ detailed.materia.nome }}</h1>
+      <p>{{ assessment_request.titulo }} · entrega até <strong>{{ assessment_request.prazo }}</strong></p>
+    </div>
+  </header>
+
+  <section class="request-quota" aria-label="Quantidade solicitada">
+    <div><span>Solicitadas</span><strong>{{ requested_count }}</strong></div>
+    <div><span>Já enviadas</span><strong>{{ submitted_count }}</strong></div>
+    <div><span>Faltam enviar</span><strong>{{ remaining_count }}</strong></div>
+    <p>Selecione exatamente <strong>{{ remaining_count }}</strong> {{ 'nova questão' if remaining_count == 1 else 'novas questões' }} para completar o pedido.</p>
+  </section>
+
   {% if assessment_request.observacoes %}<section class="request-observations"><h2>Orientações da coordenação</h2><p>{{ assessment_request.observacoes }}</p></section>{% endif %}
-  {% if detailed.entregas %}<section class="request-detail-section"><div class="section-heading"><div><h2>Questões já enviadas</h2><p>Abra a solicitação de revisão, inicie os ajustes e salve a questão para reenviá-la.</p></div></div><div class="request-submission-list">{% for submission in detailed.entregas %}<div class="request-submission"><div class="request-submission__copy"><div>{{ status_tag(submission.status, 'success' if submission.status == 'Aprovada' else 'warning') }}<small>{{ submission.origem }} · {{ submission.enviado_em }}</small></div><strong>{{ submission.questao.enunciado|question_text }}</strong>{% if submission.revisao_observacao %}<p><b>Ajuste solicitado:</b> {{ submission.revisao_observacao }}</p>{% endif %}</div><div class="request-submission__actions"><a class="button button--quiet" href="{{ url_for('questions.detail', question_id=submission.question_id) }}">Ver questão</a>{% if submission.status == 'Revisão solicitada' %}<a class="button button--primary" href="{{ url_for('questions.detail', question_id=submission.question_id) }}">Abrir revisão</a>{% endif %}</div></div>{% endfor %}</div></section>{% endif %}
-  {% if assessment_request.status not in ['Pronto para agendar', 'Agendado'] %}<form class="teacher-question-picker" method="post"><section class="form-section"><div class="form-section__heading"><span>1</span><div><h2>Escolher do banco de questões</h2><p>Use uma ou mais questões da sua matéria.</p></div></div>{% if bank_questions %}<div class="question-picker-list">{% for question in bank_questions %}<label><input type="checkbox" name="bank_question_ids" value="{{ question.id }}"><span><strong>{{ question.enunciado|question_text }}</strong><small>{{ question.assunto }} · {{ question.dificuldade }}</small></span></label>{% endfor %}</div>{% else %}<div class="request-empty">Seu banco ainda não possui questões desta matéria.</div>{% endif %}</section>
-    <section class="form-section"><div class="form-section__heading"><span>2</span><div><h2>Reutilizar do histórico</h2><p>Selecione questões que você já enviou em solicitações anteriores.</p></div></div>{% if history_questions %}<div class="question-picker-list">{% for question in history_questions %}<label><input type="checkbox" name="history_question_ids" value="{{ question.id }}"><span><strong>{{ question.enunciado|question_text }}</strong><small>Enviada anteriormente · {{ question.dificuldade }}</small></span></label>{% endfor %}</div>{% else %}<div class="request-empty">Nenhuma questão anterior disponível para esta matéria.</div>{% endif %}</section><div class="form-actions"><a class="button button--secondary" href="{{ url_for('assessments.teacher_requests') }}">Voltar</a><button class="button button--primary" type="submit">Enviar selecionadas</button></div></form>{% else %}<div class="alert alert--success" role="status"><div class="alert__icon" aria-hidden="true">✓</div><div><strong>Envio concluído</strong><p>A coordenação finalizou a avaliação das questões deste pedido.</p></div></div>{% endif %}
+
+  {% if detailed.entregas %}
+    <section class="request-detail-section">
+      <div class="section-heading"><div><h2>Questões já enviadas</h2><p>Abra a solicitação de revisão, inicie os ajustes e salve a questão para reenviá-la.</p></div></div>
+      <div class="request-submission-list">
+        {% for submission in detailed.entregas %}
+          <div class="request-submission">
+            <div class="request-submission__copy">
+              <div>{{ status_tag(submission.status, 'success' if submission.status == 'Aprovada' else 'warning') }}<small>{{ submission.origem }} · {{ submission.enviado_em }}</small></div>
+              <strong>{{ submission.questao.enunciado|question_text }}</strong>
+              {% if submission.revisao_observacao %}<p><b>Ajuste solicitado:</b> {{ submission.revisao_observacao }}</p>{% endif %}
+            </div>
+            <div class="request-submission__actions"><a class="button button--quiet" href="{{ url_for('questions.detail', question_id=submission.question_id) }}">Ver questão</a>{% if submission.status == 'Revisão solicitada' %}<a class="button button--primary" href="{{ url_for('questions.detail', question_id=submission.question_id) }}">Abrir revisão</a>{% endif %}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if assessment_request.status not in ['Pronto para agendar', 'Agendado'] and remaining_count > 0 %}
+    <form class="teacher-question-picker" method="post" data-request-question-picker data-required-count="{{ remaining_count }}">
+      <input type="hidden" name="materia_id" value="{{ assignment.materia_id }}">
+      <div class="question-selection-summary" aria-live="polite">
+        <strong data-question-selection-counter>0 de {{ remaining_count }} selecionadas</strong>
+        <span>O limite reúne banco e histórico. Ao escolher outra questão com a seleção completa, ela substitui a última marcada.</span>
+      </div>
+      <section class="form-section">
+        <div class="form-section__heading"><span>1</span><div><h2>Escolher do banco de questões</h2><p>Selecione questões que já estejam cadastradas na sua matéria.</p></div></div>
+        {% if bank_questions %}<div class="question-picker-list">{% for question in bank_questions %}<label><input type="checkbox" name="bank_question_ids" value="{{ question.id }}" data-request-question-option><span><strong>{{ question.enunciado|question_text }}</strong><small>{{ question.assunto }} · {{ question.dificuldade }}</small></span></label>{% endfor %}</div>{% else %}<div class="request-empty">Seu banco ainda não possui outras questões desta matéria.</div>{% endif %}
+      </section>
+      <section class="form-section">
+        <div class="form-section__heading"><span>2</span><div><h2>Reutilizar do histórico</h2><p>Selecione questões que você já enviou em solicitações anteriores.</p></div></div>
+        {% if history_questions %}<div class="question-picker-list">{% for question in history_questions %}<label><input type="checkbox" name="history_question_ids" value="{{ question.id }}" data-request-question-option><span><strong>{{ question.enunciado|question_text }}</strong><small>Enviada anteriormente · {{ question.dificuldade }}</small></span></label>{% endfor %}</div>{% else %}<div class="request-empty">Nenhuma questão anterior disponível para esta matéria.</div>{% endif %}
+      </section>
+      {% if bank_questions|length + history_questions|length < remaining_count %}<p class="request-capacity-note"><strong>O banco ainda não possui questões suficientes.</strong> Cadastre as questões que faltam pelo menu <b>Banco de questões</b> e depois retorne a esta solicitação.</p>{% endif %}
+      <div class="form-actions"><a class="button button--secondary" href="{{ url_for('assessments.teacher_requests') }}">Voltar</a><button class="button button--primary" type="submit">Enviar selecionadas</button></div>
+    </form>
+  {% elif assessment_request.status in ['Pronto para agendar', 'Agendado'] %}
+    <div class="alert alert--success" role="status"><div class="alert__icon" aria-hidden="true">{{ icon('check') }}</div><div><strong>Envio concluído</strong><p>A coordenação finalizou a avaliação das questões deste pedido.</p></div></div>
+  {% else %}
+    <div class="alert alert--info" role="status"><div class="alert__icon" aria-hidden="true">i</div><div><strong>Quantidade solicitada enviada</strong><p>As {{ requested_count }} questões já estão com a coordenação para avaliação.</p></div></div>
+  {% endif %}
+
+  <dialog class="site-dialog site-dialog--warning" data-question-selection-dialog{% if selection_error %} data-open-on-load{% endif %} aria-labelledby="question-selection-title">
+    <div class="site-dialog__mark" aria-hidden="true">!</div>
+    <h2 id="question-selection-title">Revise a quantidade</h2>
+    <p data-question-selection-message>{{ selection_error or 'Selecione exatamente a quantidade de questões solicitada pela coordenação.' }}</p>
+    <form method="dialog"><button class="button button--primary" type="submit">Revisar seleção</button></form>
+  </dialog>
 {% endblock %}

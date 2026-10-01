@@ -1,0 +1,60 @@
+{% from "macros/icons.html" import icon %}
+
+{% macro material_card(material, can_manage=false) %}
+  <article class="material-post">
+    <header class="material-post__header">
+      <span class="material-post__avatar" aria-hidden="true">{{ material.professor.split()|map('first')|join }}</span>
+      <div><h3>{{ material.titulo }}</h3><p>{{ material.professor }} · {{ material.publicado_em }}</p></div>
+    </header>
+    <div class="material-post__body">
+      <p class="material-post__description">{{ material.descricao }}</p>
+      {% if material.texto %}<div class="material-post__text">{{ material.texto }}</div>{% endif %}
+      {% if material.anexo %}<a class="material-attachment" href="{{ url_for('materials.attachment', material_id=material.id) }}" target="_blank"><span>{{ material.anexo.extensao }}</span><div><strong>{{ material.anexo.nome }}</strong><small>Abrir anexo</small></div></a>{% endif %}
+    </div>
+    {% if can_manage %}
+      <footer>
+        <span>Publicado para</span>{% for turma in material.turmas %}<strong>{{ turma.nome }}</strong>{% endfor %}
+        <div class="material-post__actions">
+          <a class="button button--quiet" href="{{ url_for('materials.edit', material_id=material.id) }}">Editar</a>
+          <button class="button button--danger-quiet" type="button" data-material-delete data-material-name="{{ material.titulo }}" data-material-action="{{ url_for('materials.delete', material_id=material.id) }}">Excluir</button>
+        </div>
+      </footer>
+    {% endif %}
+  </article>
+{% endmacro %}
+
+{% macro material_library(groups, can_manage=false) %}
+  <nav class="material-library-index" aria-label="Matérias com materiais de revisão">
+    {% for subject in groups %}
+      <a href="#materia-{{ subject.id }}">
+        <span class="material-library-index__icon" aria-hidden="true">{{ icon('curriculum') }}</span>
+        <span><strong>{{ subject.nome }}</strong><small>{{ subject.assuntos|length }} assunto{% if subject.assuntos|length != 1 %}s{% endif %}</small></span>
+        <b>{{ subject.quantidade }}</b>
+      </a>
+    {% endfor %}
+  </nav>
+  <div class="material-library">
+    {% for subject in groups %}
+      <section class="material-subject" id="materia-{{ subject.id }}" aria-labelledby="materia-{{ subject.id }}-titulo">
+        <header class="material-subject__header">
+          <div><span>Matéria</span><h2 id="materia-{{ subject.id }}-titulo">{{ subject.nome }}</h2></div>
+          <p>{{ subject.quantidade }} {{ 'material' if subject.quantidade == 1 else 'materiais' }} em {{ subject.assuntos|length }} assunto{% if subject.assuntos|length != 1 %}s{% endif %}</p>
+        </header>
+        <div class="material-topic-list">
+          {% for topic in subject.assuntos %}
+            <section class="material-topic" aria-labelledby="assunto-{{ topic.id }}-titulo">
+              <header class="material-topic__header">
+                <span aria-hidden="true">{{ '%02d'|format(loop.index) }}</span>
+                <div><small>Assunto</small><h3 id="assunto-{{ topic.id }}-titulo">{{ topic.nome }}</h3></div>
+                <b>{{ topic.materiais|length }} {{ 'publicação' if topic.materiais|length == 1 else 'publicações' }}</b>
+              </header>
+              <div class="material-feed">
+                {% for material in topic.materiais %}{{ material_card(material, can_manage) }}{% endfor %}
+              </div>
+            </section>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+{% endmacro %}

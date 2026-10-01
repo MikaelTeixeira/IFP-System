@@ -1,12 +1,7 @@
 {% extends "base.html" %}
 {% from "macros/ui.html" import empty_state %}
+{% from "macros/materials.html" import material_library %}
 {% block content %}
-  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Materiais de revisão</p><h1>Materiais de revisão</h1><p>Acompanhe as postagens dos seus professores e prepare-se para os simulados.</p></div></header>
-  {% if materials %}<section class="material-feed" aria-label="Materiais de revisão publicados pelos professores">
-    {% for material in materials %}<article class="material-post">
-      <header class="material-post__header"><span class="material-post__avatar" aria-hidden="true">{{ material.professor.split()|map('first')|join }}</span><div><h2>{{ material.titulo }}</h2><p>{{ material.professor }} · {{ material.publicado_em }}</p></div><span class="status-tag status-tag--info">{{ material.materia }}</span></header>
-      <div class="material-post__body"><strong>{{ material.assunto }}</strong><p class="material-post__description">{{ material.descricao }}</p>{% if material.texto %}<div class="material-post__text">{{ material.texto|e|replace('\n', '<br>')|safe }}</div>{% endif %}
-      {% if material.anexo %}<a class="material-attachment" href="{{ url_for('materials.attachment', material_id=material.id) }}" target="_blank"><span>{{ material.anexo.extensao }}</span><div><strong>{{ material.anexo.nome }}</strong><small>Abrir anexo</small></div></a>{% endif %}</div>
-    </article>{% endfor %}
-  </section>{% else %}{{ empty_state("Nenhum material disponível", "Quando um professor publicar para sua turma, a postagem aparecerá aqui.") }}{% endif %}
+  <header class="page-header student-page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Materiais de revisão</p><h1>Materiais de revisão</h1><p>Encontre conteúdos por matéria e assunto para estudar no seu ritmo.</p></div>{% if materials %}<span class="student-page-header__count"><strong>{{ material_groups|length }}</strong> {{ 'matéria' if material_groups|length == 1 else 'matérias' }}</span>{% endif %}</header>
+  {% if materials %}{{ material_library(material_groups) }}{% else %}{{ empty_state("Nenhum material disponível", "Quando um professor publicar para sua turma, a postagem aparecerá aqui.") }}{% endif %}
 {% endblock %}

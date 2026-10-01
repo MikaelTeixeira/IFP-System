@@ -59,12 +59,16 @@ def _baseline(institution_id):
     return SCHOOL_BASELINES.get(institution_id, {"average": 0, "attendance": 0, "absences": 0, "trend": [0] * 7, "absence_trend": [0] * 7})
 
 
-def _metrics(institution_id, series_id=None, class_id=None):
+def _metrics(institution_id, series_id=None, class_id=None, school_year=None):
     baseline = _baseline(institution_id)
     scope_id = class_id or series_id or institution_id
     adjustment = ((_numeric_id(scope_id) % 5) - 2) * 0.12 if scope_id != institution_id else 0
     students = _records("alunos", instituicao_id=institution_id)
     classes = _records("turmas", instituicao_id=institution_id)
+    if school_year:
+        classes = [item for item in classes if item.get("ano_letivo") == school_year]
+        class_ids = {item["id"] for item in classes}
+        students = [item for item in students if item.get("turma_id") in class_ids]
     if series_id:
         classes = [item for item in classes if item["serie_id"] == series_id]
         class_ids = {item["id"] for item in classes}
@@ -128,6 +132,60 @@ def class_report(institution, series, school_class):
         students.append({**student, "average": student_average, "attendance": round(max(0, min(100, metrics["attendance"] - offset)), 1)})
     students.sort(key=lambda item: (-item["average"], item["nome"]))
     return {**school_class, **metrics, "students_data": students}
+
+
+def student_attendance_roster(institution_id, series_id=None, class_id=None, school_year="2026"):
+    classes = _records("turmas", instituicao_id=institution_id)
+    if school_year:
+        classes = [item for item in classes if item.get("ano_letivo") == school_year]
+    if series_id:
+        classes = [item for item in classes if item.get("serie_id") == series_id]
+    if class_id:
+        classes = [item for item in classes if item["id"] == class_id]
+    class_ids = {item["id"] for item in classes}
+    students = [item for item in _records("alunos", instituicao_id=institution_id) if item.get("turma_id") in class_ids]
+    students.sort(key=lambda item: item["nome"])
+
+    summaries = {}
+    try:
+        from ..models import StudentAttendanceSummary
+
+        rows = StudentAttendanceSummary.query.filter(
+            StudentAttendanceSummary.student_id.in_([item["id"] for item in students]),
+            StudentAttendanceSummary.school_year == school_year,
+        ).all() if students else []
+        summaries = {item.student_id: item for item in rows}
+    except RuntimeError:
+        pass
+
+    class_by_id = {item["id"]: item for item in DATA["turmas"]}
+    series_by_id = {item["id"]: item for item in DATA["series"]}
+    baseline = _baseline(institution_id)
+    records = []
+    for index, student in enumerate(students):
+        summary = summaries.get(student["id"])
+        school_class = class_by_id.get(student.get("turma_id"), {})
+        series = series_by_id.get(school_class.get("serie_id"), {})
+        fallback_attendance = round(max(0, min(100, baseline["attendance"] + ((index % 5) - 2) * .35)), 1)
+        records.append({
+            **student,
+            "turma": school_class.get("nome", "Sem turma"),
+            "serie": series.get("nome", "Sem série"),
+            "attendance": summary.attendance if summary else fallback_attendance,
+            "absences": summary.absences if summary else 0,
+            "latest_status": summary.latest_status if summary else "Presente",
+        })
+    return records
+
+
+def school_history(institution):
+    years = sorted({
+        item.get("ano_letivo") for item in _records("turmas", instituicao_id=institution["id"])
+        if item.get("ano_letivo")
+    }, reverse=True)
+    if not years:
+        years = ["2026"]
+    return [{"year": year, **_metrics(institution["id"], school_year=year)} for year in years]
 
 
 def institute_report():

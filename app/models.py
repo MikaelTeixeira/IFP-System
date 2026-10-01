@@ -245,6 +245,19 @@ class ReportSnapshot(db.Model):
     absence_trend = db.Column(db.JSON, nullable=False)
 
 
+class StudentAttendanceSummary(db.Model):
+    __tablename__ = "student_attendance_summaries"
+    __table_args__ = (db.UniqueConstraint("student_id", "school_year", name="uq_student_attendance_year"),)
+
+    id = db.Column(db.String(36), primary_key=True)
+    student_id = db.Column(db.String(16), db.ForeignKey("students.id", ondelete="CASCADE"), nullable=False, index=True)
+    institution_id = db.Column(db.String(16), db.ForeignKey("institutions.id"), nullable=False, index=True)
+    school_year = db.Column(db.String(8), nullable=False, index=True)
+    attendance = db.Column(db.Float, nullable=False)
+    absences = db.Column(db.Integer, nullable=False, default=0)
+    latest_status = db.Column(db.String(20), nullable=False, default="Presente", index=True)
+
+
 class StoredFile(db.Model):
     __tablename__ = "stored_files"
 

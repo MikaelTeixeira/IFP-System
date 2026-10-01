@@ -14,7 +14,7 @@ from .data.users import INITIAL_USER_ACCOUNTS, USER_ACCOUNTS
 from .extensions import db
 from .models import (
     Assessment, AssessmentRequest, GradeSeries, Institution, MaterialPost, Municipality, Question,
-    ReportSnapshot, SchoolClass, StoredFile, Student, Subject, Teacher, Topic, UserAccount,
+    ReportSnapshot, SchoolClass, StoredFile, Student, StudentAttendanceSummary, Subject, Teacher, Topic, UserAccount,
 )
 
 
@@ -160,6 +160,24 @@ def _seed_reference_data():
             )
             for institution_id, values in SCHOOL_BASELINES.items()
         ])
+    for institution in Institution.query.all():
+        students = Student.query.filter_by(institution_id=institution.id).order_by(Student.id).all()
+        baseline = SCHOOL_BASELINES.get(institution.id, {"attendance": 0, "absences": 0})
+        base_absences, remainder = divmod(int(baseline["absences"]), len(students)) if students else (0, 0)
+        for index, student in enumerate(students):
+            summary_id = f"{student.id}-2026"
+            if db.session.get(StudentAttendanceSummary, summary_id):
+                continue
+            attendance_offset = ((index % 5) - 2) * .35
+            db.session.add(StudentAttendanceSummary(
+                id=summary_id,
+                student_id=student.id,
+                institution_id=institution.id,
+                school_year="2026",
+                attendance=round(max(0, min(100, baseline["attendance"] + attendance_offset)), 1),
+                absences=base_absences + (1 if index < remainder else 0),
+                latest_status="Ausente" if (index + 1) % 5 == 0 else "Presente",
+            ))
     db.session.commit()
 
 

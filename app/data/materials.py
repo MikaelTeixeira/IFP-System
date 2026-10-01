@@ -54,6 +54,33 @@ def find_material(material_id):
     return next((item for item in MATERIAL_POSTS if item["id"] == material_id), None)
 
 
+def group_materials(materials):
+    """Organize materiais enriquecidos pela hierarquia matéria → assunto."""
+    subject_groups = {}
+    for material in materials:
+        subject_id = material.get("materia_id", "")
+        topic_id = material.get("assunto_id", "")
+        subject = subject_groups.setdefault(subject_id, {
+            "id": subject_id,
+            "nome": material.get("materia", "Matéria não informada"),
+            "quantidade": 0,
+            "assuntos": {},
+        })
+        topic = subject["assuntos"].setdefault(topic_id, {
+            "id": topic_id,
+            "nome": material.get("assunto", "Assunto não informado"),
+            "materiais": [],
+        })
+        topic["materiais"].append(material)
+        subject["quantidade"] += 1
+
+    groups = []
+    for subject in sorted(subject_groups.values(), key=lambda item: item["nome"].casefold()):
+        subject["assuntos"] = sorted(subject["assuntos"].values(), key=lambda item: item["nome"].casefold())
+        groups.append(subject)
+    return groups
+
+
 def add_material(values):
     sequence = max([int(item["id"].split("-")[-1]) for item in MATERIAL_POSTS] or [0]) + 1
     material = {

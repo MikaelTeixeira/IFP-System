@@ -21,6 +21,7 @@
           <div class="teacher-assignment" data-assignment-subject="{{ subject.id }}"{% if subject.id not in selected_subjects %} hidden{% endif %}>
             <div><span>Matéria</span><strong>{{ subject.nome }}</strong></div>
             <div class="field"><label for="professor_{{ subject.id }}">Professor responsável</label><select id="professor_{{ subject.id }}" name="professor_{{ subject.id }}"{% if subject.id not in selected_subjects %} disabled{% endif %}><option value="">Selecione um professor</option>{% for teacher in eligible_teachers[subject.id] %}<option value="{{ teacher.id }}"{% if values.get('professor_' ~ subject.id) == teacher.id %} selected{% endif %}>{{ teacher.nome }}</option>{% endfor %}</select></div>
+            <div class="field"><label for="quantidade_{{ subject.id }}">Quantidade de questões</label><input id="quantidade_{{ subject.id }}" name="quantidade_{{ subject.id }}" type="number" min="1" max="50" value="{{ values.get('quantidade_' ~ subject.id, '5') }}"{% if subject.id not in selected_subjects %} disabled{% endif %} required><small>O professor deverá enviar exatamente essa quantidade.</small></div>
           </div>
         {% endfor %}
         <p class="teacher-assignment-list__empty" data-assignment-empty{% if selected_subjects %} hidden{% endif %}>Selecione as matérias na etapa anterior para atribuir os professores.</p>

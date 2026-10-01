@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block page_context %}{% set context_items = [institution.nome, 'Histórico da escola'] %}{% include "partials/context_bar.html" %}{% endblock %}
+{% block content %}
+  <header class="page-header report-page-header">
+    <div>
+      <p class="breadcrumb"><a href="{{ url_for('reports.school', institution_id=institution.id) }}">{{ institution.nome }}</a> <span aria-hidden="true">/</span> Histórico</p>
+      <h1>Histórico da escola</h1>
+      <p><strong>Períodos letivos.</strong> Consulte os indicadores disponíveis em cada ano letivo.</p>
+    </div>
+  </header>
+
+  <section class="report-section" aria-labelledby="periods-title">
+    <div class="report-section__heading"><div><h2 id="periods-title">Anos disponíveis</h2></div><p>{{ periods|length }} período{% if periods|length != 1 %}s{% endif %} encontrado{% if periods|length != 1 %}s{% endif %}.</p></div>
+    <div class="report-history-grid">
+      {% for period in periods %}
+        <article class="report-history-card">
+          <div><span>Ano letivo</span><time datetime="{{ period.year }}">{{ period.year }}</time></div>
+          <dl>
+            <div><dt>Média geral</dt><dd>{{ ('%.1f'|format(period.average))|replace('.', ',') }}</dd></div>
+            <div><dt>Frequência</dt><dd>{{ ('%.1f'|format(period.attendance))|replace('.', ',') }}%</dd></div>
+            <div><dt>Faltas</dt><dd>{{ period.absences }}</dd></div>
+            <div><dt>Estudantes</dt><dd>{{ period.students }}</dd></div>
+          </dl>
+          <a class="button button--secondary" href="{{ url_for('reports.school', institution_id=institution.id) }}">Abrir visão de {{ period.year }}</a>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+  <p class="report-data-note"><strong>Sobre os dados:</strong> no momento, o histórico disponível corresponde ao ano letivo de 2026.</p>
+{% endblock %}

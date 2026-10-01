@@ -1,9 +1,18 @@
-from flask import abort, redirect, render_template, url_for
+from flask import abort, redirect, render_template, request, url_for
 
 from . import reports_bp
 from ..auth.security import current_profile, roles_required
 from ..data.academic import DATA
-from ..data.reports import bar_chart, class_report, institute_report, line_chart, school_report, series_report
+from ..data.reports import (
+    bar_chart,
+    class_report,
+    institute_report,
+    line_chart,
+    school_history,
+    school_report,
+    series_report,
+    student_attendance_roster,
+)
 
 
 REPORT_ROLES = ("school_coordinator", "institute_coordinator")
@@ -59,6 +68,79 @@ def school(institution_id):
         performance_chart=line_chart(report["trend"]),
         absence_chart=bar_chart(["Fev", "Mar", "Abr", "Mai", "Jun", "Ago", "Set"], report["absence_trend"], "Faltas"),
         can_view_all=current_profile()["key"] == "institute_coordinator", active_navigation="relatorios",
+    )
+
+
+@reports_bp.get("/escolas/<institution_id>/historico")
+@roles_required(*REPORT_ROLES)
+def history(institution_id):
+    _ensure_school_scope(institution_id)
+    institution = _find_or_404("instituicoes", institution_id)
+    return render_template(
+        "reports/history.html",
+        page_title=f"Histórico · {institution['nome']}",
+        institution=institution,
+        periods=school_history(institution),
+        active_navigation="relatorios",
+    )
+
+
+@reports_bp.get("/escolas/<institution_id>/estudantes/<view>")
+@roles_required(*REPORT_ROLES)
+def students(institution_id, view):
+    views = {
+        "frequencia": {
+            "title": "Estudantes que compareceram",
+            "description": "Relação de estudantes marcados como presentes no último registro do período.",
+            "status": "Presente",
+        },
+        "faltas": {
+            "title": "Estudantes que faltaram",
+            "description": "Relação de estudantes marcados como ausentes no último registro do período.",
+            "status": "Ausente",
+        },
+        "todos": {
+            "title": "Relação total de estudantes",
+            "description": "Todos os estudantes vinculados ao recorte acadêmico selecionado.",
+            "status": None,
+        },
+    }
+    if view not in views:
+        abort(404)
+    _ensure_school_scope(institution_id)
+    institution = _find_or_404("instituicoes", institution_id)
+    series_id = request.args.get("series_id") or None
+    class_id = request.args.get("class_id") or None
+    series_record = _find_or_404("series", series_id) if series_id else None
+    class_record = _find_or_404("turmas", class_id) if class_id else None
+    if series_record and series_record.get("instituicao_id") != institution_id:
+        abort(404)
+    if class_record and (
+        class_record.get("instituicao_id") != institution_id
+        or (series_id and class_record.get("serie_id") != series_id)
+    ):
+        abort(404)
+    if class_record and not series_record:
+        series_record = _find_or_404("series", class_record["serie_id"])
+        series_id = series_record["id"]
+
+    all_students = student_attendance_roster(institution_id, series_id=series_id, class_id=class_id)
+    selected_view = views[view]
+    records = [
+        item for item in all_students
+        if selected_view["status"] is None or item["latest_status"] == selected_view["status"]
+    ]
+    return render_template(
+        "reports/students.html",
+        page_title=f"{selected_view['title']} · {institution['nome']}",
+        institution=institution,
+        series=series_record,
+        school_class=class_record,
+        records=records,
+        total_students=len(all_students),
+        selected_view=view,
+        view_config=selected_view,
+        active_navigation="relatorios",
     )
 
 

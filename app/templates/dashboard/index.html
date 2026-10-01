@@ -1,5 +1,36 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import icon %}
 {% block content %}
+  {% if current_profile.key == 'student' %}
+  <header class="student-home-hero">
+    <div class="student-home-hero__copy">
+      <p class="student-home-hero__eyebrow"><span aria-hidden="true"></span> Seu ambiente de aprendizagem</p>
+      <h1>{{ page_title }}</h1>
+      <p>{{ page_description }}</p>
+      <a class="button student-primary-action" href="{{ url_for('student_area.assessments') }}">Ver meus simulados {{ icon('chevron-right') }}</a>
+    </div>
+    <div class="student-home-hero__visual" aria-hidden="true">
+      <span>{{ icon('curriculum') }}</span>
+      <i>2026</i>
+    </div>
+  </header>
+  <section class="student-home-actions" aria-labelledby="student-actions-title">
+    <div class="section-heading"><div><h2 id="student-actions-title">O que você quer fazer?</h2><p>Escolha uma área para continuar seus estudos.</p></div></div>
+    <div class="student-home-grid">
+      {% for label, value, endpoint, parameters in summary %}
+        {% set action_icon = 'assessment' if endpoint == 'student_area.assessments' else ('curriculum' if endpoint == 'student_area.review' else 'person') %}
+        {% set action_description = 'Consulte datas, orientações e resultados.' if endpoint == 'student_area.assessments' else ('Revise os conteúdos enviados pelos professores.' if endpoint == 'student_area.review' else 'Veja sua turma e suas informações acadêmicas.') %}
+        <a class="student-home-card student-home-card--{{ loop.index }}" href="{{ url_for(endpoint, **parameters) }}">
+          <span class="student-home-card__icon" aria-hidden="true">{{ icon(action_icon) }}</span>
+          <span class="student-home-card__copy"><small>Área do aluno</small><strong>{{ label }}</strong><span>{{ action_description }}</span></span>
+          <b>{{ value }}</b>
+          <span class="student-home-card__cta">Abrir {{ icon('chevron-right') }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="student-study-tip"><span aria-hidden="true">{{ icon('info') }}</span><div><h2>Uma etapa de cada vez</h2><p>Confira os materiais de revisão antes dos simulados e acompanhe suas notificações para não perder novas publicações.</p></div></section>
+  {% else %}
   <header class="welcome-header">
     <div><p class="breadcrumb">Início</p><h1>{{ page_title }}</h1><p>{{ page_description }}</p></div>
     <div class="welcome-date"><span>Período atual</span><strong>2026</strong></div>
@@ -8,9 +39,10 @@
     <div class="section-heading"><div><h2 id="summary-title">Seu espaço de trabalho</h2><p>Acesse as informações disponíveis para o seu perfil.</p></div></div>
     <div class="summary-list">
       {% for label, value, endpoint, parameters in summary %}
-        <a class="summary-row" href="{{ url_for(endpoint, **parameters) }}"><span><strong>{{ label }}</strong><small>Consultar informações</small></span><b>{{ value }}</b><span aria-hidden="true">›</span></a>
+        <a class="summary-row" href="{{ url_for(endpoint, **parameters) }}"><span><strong>{{ label }}</strong><small>Abrir área</small></span><b>{{ value }}</b><span aria-hidden="true">{{ icon('chevron-right') }}</span></a>
       {% endfor %}
     </div>
   </section>
-  <section class="guidance-panel"><div class="guidance-panel__mark" aria-hidden="true">i</div><div><h2>Ambiente de demonstração</h2><p>Cadastros administrativos, tentativas, respostas, arquivos, revisões e notificações usam o banco local. Parte do conteúdo acadêmico ainda é restaurada quando o servidor reinicia.</p></div></section>
+  <section class="guidance-panel"><div class="guidance-panel__mark" aria-hidden="true">{{ icon('info') }}</div><div><h2>Ambiente de demonstração</h2><p>Cadastros administrativos, tentativas, respostas, arquivos, revisões e notificações usam o banco local. Parte do conteúdo acadêmico ainda é restaurada quando o servidor reinicia.</p></div></section>
+  {% endif %}
 {% endblock %}

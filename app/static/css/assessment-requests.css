@@ -7,7 +7,7 @@
 .request-choice-grid span { display: grid; }
 .request-choice-grid small { color: var(--text-muted); }
 .teacher-assignment-list { display: grid; padding: 0 24px 24px; }
-.teacher-assignment { display: grid; grid-template-columns: minmax(180px, .75fr) minmax(260px, 1.25fr); align-items: end; gap: 24px; padding: 17px 4px; border-bottom: 1px solid var(--border-default); }
+.teacher-assignment { display: grid; grid-template-columns: minmax(150px, .65fr) minmax(230px, 1.2fr) minmax(190px, .8fr); align-items: end; gap: 24px; padding: 17px 4px; border-bottom: 1px solid var(--border-default); }
 .teacher-assignment[hidden] { display: none; }
 .teacher-assignment > div:first-child { display: grid; gap: 3px; align-self: center; }
 .teacher-assignment > div:first-child span { color: var(--text-muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; }
@@ -18,7 +18,7 @@
 .assessment-requests { margin-top: 10px; }
 .assessment-requests--inbox { margin-top: 34px; padding-top: 28px; border-top: 1px solid var(--border-default); }
 .request-card-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
-.request-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; padding: 20px; background: white; border: 1px solid var(--border-default); border-left: 4px solid var(--brand-orange-500); border-radius: var(--radius-medium); }
+.request-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; padding: 20px; background: white; border: 1px solid var(--border-default); border-radius: var(--radius-medium); }
 .request-card > div { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-muted); font-size: .82rem; }
 .request-card h3 { margin: 2px 0 0; }
 .request-card p { grid-column: 1; margin: 0; color: var(--text-muted); }
@@ -34,7 +34,7 @@
 .teacher-request-table > div { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; padding: 15px 20px; }
 .teacher-request-table > div + div { border-top: 1px solid var(--border-default); }
 .teacher-request-table__header { color: var(--text-muted); background: var(--surface-page); font-size: .8rem; font-weight: 800; text-transform: uppercase; }
-.request-observations { margin-top: 22px; padding: 20px 22px; background: var(--brand-navy-100); border-left: 4px solid var(--brand-navy-700); border-radius: var(--radius-small); }
+.request-observations { margin-top: 22px; padding: 20px 22px; background: var(--brand-navy-100); border: 1px solid #cbd2df; border-radius: var(--radius-small); }
 .request-observations h2 { font-size: 1rem; }
 .request-observations p { margin: 7px 0 0; white-space: pre-wrap; }
 .request-subject-list, .teacher-request-cards, .notification-list { display: grid; gap: 16px; margin-top: 14px; }
@@ -57,10 +57,21 @@
 .request-schedule-card form { display: grid; grid-template-columns: 1.3fr 1fr .7fr; align-items: end; gap: 12px; }
 .request-schedule-card form .button { grid-column: 1 / -1; justify-self: end; }
 .teacher-request-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.teacher-request-card { display: grid; gap: 10px; padding: 20px; border-top: 4px solid var(--brand-orange-500); }
+.teacher-request-card { display: grid; gap: 10px; padding: 20px; }
 .teacher-request-card__top, .teacher-request-card > div:last-child { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .teacher-request-card h2, .teacher-request-card p { margin: 0; }
 .teacher-question-picker { display: grid; gap: 18px; margin-top: 28px; }
+.request-quota { display: grid; grid-template-columns: repeat(3, minmax(120px, 170px)) minmax(260px, 1fr); align-items: center; gap: 0; overflow: hidden; margin-bottom: 22px; background: white; border: 1px solid var(--border-default); border-radius: var(--radius-medium); }
+.request-quota > div { display: grid; gap: 3px; padding: 18px 20px; border-right: 1px solid var(--border-default); }
+.request-quota > div span { color: var(--text-muted); font-size: .78rem; font-weight: 750; }
+.request-quota > div strong { color: var(--brand-navy-900); font-size: 1.45rem; }
+.request-quota > p { margin: 0; padding: 18px 22px; color: var(--text-muted); }
+.request-quota > p strong { color: var(--brand-navy-900); }
+.question-selection-summary { position: sticky; z-index: 2; top: calc(var(--topbar-height) + 10px); display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 13px 18px; color: white; background: var(--brand-navy-700); border-radius: var(--radius-small); box-shadow: 0 8px 20px rgb(29 41 66 / 16%); }
+.question-selection-summary strong { color: white; }
+.question-selection-summary span { color: rgb(255 255 255 / 76%); font-size: .86rem; }
+.request-capacity-note { margin: 0; padding: 16px 18px; color: var(--text-muted); background: var(--state-warning-soft); border: 1px solid #e3c777; border-radius: var(--radius-small); }
+.request-capacity-note strong { color: var(--text-primary); }
 .question-picker-list { display: grid; gap: 10px; padding: 0 24px 24px; }
 .question-picker-list label { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; align-items: start; padding: 14px; border: 1px solid var(--border-default); border-radius: var(--radius-small); cursor: pointer; }
 .question-picker-list label:has(input:checked) { background: var(--brand-orange-100); border-color: var(--brand-orange-500); }
@@ -71,9 +82,28 @@
 .notification-card > div { display: flex; gap: 14px; }
 .notification-card__mark { display: grid; flex: 0 0 38px; height: 38px; place-items: center; color: white; background: var(--brand-navy-700); border-radius: 50%; font-weight: 800; }
 .notification-card h2 { margin: 3px 0; font-size: 1.05rem; }.notification-card p { margin: 0; color: var(--text-muted); }
-.correction-list { display: grid; gap: 14px; }
-.correction-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px; background: white; border: 1px solid var(--border-default); border-left: 4px solid var(--brand-orange-500); border-radius: var(--radius-medium); }
-.correction-card h2 { margin: 8px 0 4px; }.correction-card p { margin: 0; color: var(--text-muted); }
+.correction-carousel-section { margin-top: 10px; }
+.correction-carousel-section--history { margin-top: 38px; padding-top: 30px; border-top: 1px solid var(--border-default); }
+.correction-carousel-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 24px; margin-bottom: 16px; }
+.correction-carousel-heading h2 { margin: 0; color: var(--brand-navy-900); font-size: 1.35rem; }
+.correction-carousel-heading p { margin: 5px 0 0; color: var(--text-muted); }
+.carousel-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.carousel-position { min-width: 74px; color: var(--text-muted); font-size: .84rem; font-weight: 700; text-align: right; }
+.carousel-button { display: grid; width: 40px; height: 40px; padding: 0; place-items: center; color: white; background: var(--brand-navy-700); border: 1px solid var(--brand-navy-700); border-radius: 50%; font: inherit; font-size: 1.65rem; line-height: 1; cursor: pointer; }
+.carousel-button:focus-visible { outline: 3px solid color-mix(in srgb, var(--focus-ring) 55%, transparent); outline-offset: 2px; }
+.carousel-button:disabled { color: var(--text-muted); background: var(--surface-page); border-color: var(--border-default); cursor: default; }
+.correction-carousel { overflow: hidden; }
+.correction-carousel__track { display: grid; grid-auto-columns: calc((100% - 16px) / 2); grid-auto-flow: column; gap: 16px; overflow-x: auto; padding: 2px 2px 8px; scroll-behavior: smooth; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.correction-carousel__track::-webkit-scrollbar { display: none; }
+.correction-carousel__track:focus-visible { outline: 3px solid color-mix(in srgb, var(--focus-ring) 45%, transparent); outline-offset: 2px; border-radius: var(--radius-medium); }
+.correction-card { display: grid; grid-template-rows: auto 1fr auto; gap: 20px; min-height: 250px; padding: 22px; background: white; border: 1px solid var(--border-default); border-radius: var(--radius-medium); scroll-snap-align: start; }
+.correction-card--history { border-top-color: var(--brand-navy-500); }
+.correction-card__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-muted); font-size: .8rem; }
+.correction-card__body { align-self: start; }
+.correction-card h3 { margin: 0; color: var(--brand-navy-900); font-size: 1.15rem; }
+.correction-card p { margin: 10px 0 0; color: var(--text-muted); }
+.correction-card__body .correction-card__student { margin-top: 5px; color: var(--text-primary); font-weight: 800; }
+.correction-card > .button { justify-self: start; }
 .open-correction-form { display: grid; gap: 18px; }
 .open-correction-card { display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; padding: 24px; background: white; border: 1px solid var(--border-default); border-radius: var(--radius-medium); }
 .open-correction-card__question > span { color: var(--brand-orange-700); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
@@ -96,11 +126,16 @@
   .teacher-request-table__header { display: none !important; }
   .teacher-request-table > div { grid-template-columns: 1fr; gap: 4px; }
   .teacher-request-cards, .request-schedule-card { grid-template-columns: 1fr; }
+  .request-quota { grid-template-columns: repeat(3, 1fr); }
+  .request-quota > div:nth-child(3) { border-right: 0; }
+  .request-quota > p { grid-column: 1 / -1; border-top: 1px solid var(--border-default); }
+  .question-selection-summary { position: static; align-items: flex-start; flex-direction: column; gap: 3px; }
   .request-schedule-card form { grid-template-columns: 1fr; }
   .request-submission { grid-template-columns: 1fr; }
   .request-submission__actions { justify-content: flex-start; }
   .notification-card { align-items: flex-start; flex-direction: column; }
-  .correction-card { align-items: flex-start; flex-direction: column; }
+  .correction-carousel-heading { align-items: flex-start; }
+  .correction-carousel__track { grid-auto-columns: 100%; }
   .open-correction-card { grid-template-columns: 1fr; }
   .review-history li { grid-template-columns: 1fr; gap: 4px; }
 }

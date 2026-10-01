@@ -624,3 +624,89 @@ administrativa do MySQL instalado na máquina.
   carga inicial dos domínios migrados.
 - As restrições de segurança que dependem de autenticação real e infraestrutura
   permanecem registradas em `PENDENCIAS_SEGURANCA.md`.
+
+# 1º de outubro de 2026 - Carrosséis de correções do professor
+
+- A aba **Correções** passou a apresentar as solicitações pendentes em um carrossel.
+- Foi incluído um segundo carrossel com o histórico das respostas já corrigidas,
+  exibindo aluno, simulado, quantidade de respostas, média e data da correção.
+- A navegação oferece controles anterior e próximo, posição atual, rolagem por
+  toque e suporte às setas do teclado.
+- O histórico é alimentado pelas notas persistidas no MySQL e permite reabrir a
+  correção para consultar notas, conceitos e comentários.
+
+# 1º de outubro de 2026 - Detalhamento dos indicadores escolares
+
+- Frequência, faltas e quantidade de estudantes passaram a abrir relações
+  nominais, preservando o recorte de escola, série e turma.
+- Foi criado um resumo demonstrativo de frequência por estudante no MySQL, com
+  percentual, faltas e situação do último registro.
+- O cartão de período letivo passou a abrir o histórico da escola, inicialmente
+  com o ano de 2026.
+- As novas páginas mantêm o aviso de que frequência e faltas serão substituídas
+  pelos dados do futuro diário de frequência.
+
+# 1º de outubro de 2026 - Limite de questões nas solicitações
+
+- A Coordenação do Colégio passou a definir a quantidade de questões para cada
+  matéria e professor da solicitação.
+- A página recebida pelo Professor não oferece mais a criação direta de questão;
+  novos itens devem ser cadastrados primeiro no **Banco de questões**.
+- A seleção reúne banco e histórico e mantém o limite solicitado. Quando o
+  Professor escolhe outra questão com a seleção completa, a nova substitui
+  automaticamente a última marcada, sem interromper o fluxo com um popup.
+- O servidor exige a quantidade exata antes de registrar qualquer entrega e o
+  agendamento só é liberado quando todos os totais pedidos forem aprovados.
+
+# 1º de outubro de 2026 - Destaque de notificações não lidas
+
+- O atalho de notificações do cabeçalho recebeu um sino maior e uma área de
+  clique ampliada.
+- Avisos não lidos agora exibem um contador numérico em laranja, com contraste,
+  borda e sombra para não passarem despercebidos pelo Professor.
+- O contador mostra até **99+** e desaparece quando a central de notificações é
+  aberta e os avisos são marcados como lidos.
+
+# 1º de outubro de 2026 - Refinamento visual integral com Impeccable
+
+- O frontend recebeu uma revisão completa de identidade, hierarquia,
+  consistência, interação e responsividade sem alterar as permissões ou os
+  fluxos funcionais existentes.
+- A direção de **caderno institucional** passou a usar superfícies em marfim,
+  azul como estrutura e laranja como marcação, preservando a paleta aprovada.
+- A navegação lateral foi agrupada por tarefa para cada perfil e recebeu um
+  conjunto único de ícones SVG lineares.
+- Cabeçalhos, formulários, filtros, botões, tabelas, estados vazios, avisos,
+  simulados e relatórios foram alinhados aos mesmos tokens e estados visuais.
+- O painel inicial ganhou melhor aproveitamento do espaço e leitura mais rápida
+  das áreas de trabalho.
+- Em telas menores, o menu recolhido deixa de receber foco por teclado e devolve
+  o foco ao botão de abertura quando é fechado.
+- A revisão foi conferida em desktop e em uma largura de **390 px**.
+- A suíte completa terminou com **68 testes aprovados** e o JavaScript principal
+  passou pela verificação de sintaxe.
+
+# 1º de outubro de 2026 - Biblioteca de materiais por matéria e assunto
+
+- As áreas de materiais do Professor e do Aluno passaram a apresentar uma
+  hierarquia visível de **matéria**, **assunto** e **publicações**.
+- Um índice no início da página permite acessar rapidamente cada matéria e exibe
+  quantos assuntos e materiais estão disponíveis.
+- O cadastro do Professor reforça a classificação obrigatória, filtra os
+  assuntos pela matéria selecionada e oferece acesso direto a **Meus assuntos**.
+- Os vínculos já persistidos no MySQL foram reutilizados, sem alteração da
+  estrutura do banco ou perda de publicações existentes.
+- A suíte completa terminou com **70 testes aprovados** após a mudança.
+
+# 1º de outubro de 2026 - Experiência visual do Aluno
+
+- O início do Aluno recebeu uma apresentação própria, atalhos inteiros clicáveis
+  e chamadas de ação mais evidentes.
+- Simulados, orientações, notificações, materiais e resultados passaram a usar
+  cabeçalhos e botões coerentes com essa experiência.
+- A prova ganhou um indicador persistente de questões respondidas, atualizado a
+  cada marcação ou texto digitado.
+- Foram adicionados movimentos breves em cartões e controles, com desativação
+  automática quando o dispositivo solicita redução de movimento.
+- A disposição foi conferida no navegador em tela compacta, inclusive durante a
+  seleção de respostas, e a suíte terminou com **71 testes aprovados**.

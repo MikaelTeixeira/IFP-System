@@ -101,7 +101,7 @@ def question_image(owner_id, current=None):
     return image
 
 
-def question_form_context(profile, question, error=None, assessment_request_id=""):
+def question_form_context(profile, question, error=None):
     subjects = subjects_for_profile(profile)
     institution_id = profile_institution_id(profile)
     institutions = [item for item in DATA["instituicoes"] if item["id"] == institution_id]
@@ -112,7 +112,6 @@ def question_form_context(profile, question, error=None, assessment_request_id="
         "institutions": institutions,
         "fixed_institution": True,
         "error": error,
-        "assessment_request_id": assessment_request_id,
         "active_navigation": "questoes",
     }
 
@@ -198,17 +197,7 @@ def detail(question_id):
 @login_required
 def create():
     profile = ensure_access(manage=True)
-    assessment_request_id = request.form.get("solicitacao_id", "").strip() if request.method == "POST" else request.args.get("solicitacao_id", "").strip()
     assigned_subject_id = request.form.get("materia_id", "").strip() if request.method == "POST" else request.args.get("materia_id", "").strip()
-    if assessment_request_id:
-        from ..data.assessments import find_assessment_request, find_request_assignment
-
-        assessment_request = find_assessment_request(assessment_request_id)
-        assignment = find_request_assignment(assessment_request, profile["teacher_id"], assigned_subject_id) if assessment_request else None
-        if not assignment:
-            abort(403)
-        if assessment_request["status"] in {"Pronto para agendar", "Agendado"}:
-            abort(403)
     if request.method == "POST":
         values = question_values(request.form)
         question = add_question({**values, "imagem": None})
@@ -224,19 +213,12 @@ def create():
             if model:
                 db.session.delete(model)
                 db.session.commit()
-            return render_template("questions/form.html", page_title="Nova questão", **question_form_context(profile, values, str(error), assessment_request_id)), 400
-        if assessment_request_id:
-            from ..data.assessments import submit_request_question
-
-            submit_request_question(assessment_request, profile["teacher_id"], assigned_subject_id, question["id"], "Nova")
-            flash("Nova questão salva e enviada para avaliação da coordenação.", "success")
-            return redirect(url_for("assessments.answer_request", request_id=assessment_request_id))
+            return render_template("questions/form.html", page_title="Nova questão", **question_form_context(profile, values, str(error))), 400
         flash("Questão salva no banco de dados.", "success")
         return redirect(url_for("questions.detail", question_id=question["id"]))
     return render_template("questions/form.html", page_title="Nova questão", **question_form_context(
         profile,
         {"instituicao_id": profile_institution_id(profile), "materia_id": assigned_subject_id},
-        assessment_request_id=assessment_request_id,
     ))
 
 

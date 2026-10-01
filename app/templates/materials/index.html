@@ -1,35 +1,13 @@
 {% extends "base.html" %}
 {% from "macros/ui.html" import empty_state %}
+{% from "macros/materials.html" import material_library %}
 {% block content %}
   <header class="page-header">
     <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Materiais de revisão</p><h1>Materiais de revisão</h1><p>Publique conteúdos para apoiar o estudo das suas turmas.</p></div>
     <a class="button button--primary" href="{{ url_for('materials.create') }}">Publicar material</a>
   </header>
   {% if materials %}
-    <section class="material-feed" aria-label="Materiais publicados">
-      {% for material in materials %}
-        <article class="material-post">
-          <header class="material-post__header">
-            <span class="material-post__avatar" aria-hidden="true">{{ material.professor.split()|map('first')|join }}</span>
-            <div><h2>{{ material.titulo }}</h2><p>{{ material.professor }} · {{ material.publicado_em }}</p></div>
-            <span class="status-tag status-tag--info">{{ material.materia }}</span>
-          </header>
-          <div class="material-post__body">
-            <strong>{{ material.assunto }}</strong>
-            <p class="material-post__description">{{ material.descricao }}</p>
-            {% if material.texto %}<div class="material-post__text">{{ material.texto|e|replace('\n', '<br>')|safe }}</div>{% endif %}
-            {% if material.anexo %}<a class="material-attachment" href="{{ url_for('materials.attachment', material_id=material.id) }}" target="_blank"><span>{{ material.anexo.extensao }}</span><div><strong>{{ material.anexo.nome }}</strong><small>Abrir anexo</small></div></a>{% endif %}
-          </div>
-          <footer>
-            <span>Publicado para</span>{% for turma in material.turmas %}<strong>{{ turma.nome }}</strong>{% endfor %}
-            <div class="material-post__actions">
-              <a class="button button--quiet" href="{{ url_for('materials.edit', material_id=material.id) }}">Editar</a>
-              <button class="button button--danger-quiet" type="button" data-material-delete data-material-name="{{ material.titulo }}" data-material-action="{{ url_for('materials.delete', material_id=material.id) }}">Excluir</button>
-            </div>
-          </footer>
-        </article>
-      {% endfor %}
-    </section>
+    {{ material_library(material_groups, true) }}
   {% else %}
     {{ empty_state("Nenhum material publicado", "Crie a primeira postagem de revisão para suas turmas.", "Publicar material", url_for('materials.create')) }}
   {% endif %}

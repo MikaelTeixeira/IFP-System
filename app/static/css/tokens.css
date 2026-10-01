@@ -6,11 +6,14 @@
   --brand-orange-700: #914713;
   --brand-orange-500: #b96121;
   --brand-orange-100: #f7e8dd;
-  --surface-page: #f6f7f9;
-  --surface-panel: #ffffff;
-  --text-primary: #202735;
-  --text-muted: #667085;
-  --border-default: #d8dde6;
+  --surface-page: #f6f4ef;
+  --surface-panel: #fffefa;
+  --surface-subtle: #eeece6;
+  --surface-navy-soft: #e9edf4;
+  --text-primary: #202838;
+  --text-muted: #626b79;
+  --border-default: #d9d8d2;
+  --border-strong: #b9bdc4;
   --state-success: #277454;
   --state-success-soft: #e5f3ed;
   --state-warning: #9a6512;
@@ -18,11 +21,12 @@
   --state-danger: #a33a3a;
   --state-danger-soft: #fbe7e7;
   --focus-ring: #d47a35;
-  --font-sans: "Nunito Sans", Arial, sans-serif;
-  --radius-small: 6px;
-  --radius-medium: 10px;
-  --shadow-float: 0 12px 28px rgb(29 41 66 / 14%);
-  --sidebar-width: 252px;
+  --font-sans: "Aptos", "Segoe UI Variable Text", "Trebuchet MS", sans-serif;
+  --radius-small: 8px;
+  --radius-medium: 14px;
+  --shadow-float: 0 14px 34px rgb(29 41 66 / 15%);
+  --shadow-soft: 0 8px 24px rgb(29 41 66 / 9%);
+  --sidebar-width: 268px;
   --topbar-height: 72px;
+  --transition-fast: 160ms cubic-bezier(.22, 1, .36, 1);
 }
-

@@ -1,9 +1,10 @@
-{% macro metric_cards(report) %}
+{% from "macros/icons.html" import icon %}
+{% macro metric_cards(report, institution_id, series_id=None, class_id=None) %}
   <div class="report-metrics" aria-label="Indicadores principais">
     <article class="report-metric report-metric--featured"><span>Média geral</span><strong>{{ ('%.1f'|format(report.average))|replace('.', ',') }}</strong><small>de 10 pontos</small></article>
-    <article class="report-metric"><span>Frequência</span><strong>{{ ('%.1f'|format(report.attendance))|replace('.', ',') }}%</strong><small>no período</small></article>
-    <article class="report-metric"><span>Faltas</span><strong>{{ report.absences }}</strong><small>registros no período</small></article>
-    <article class="report-metric"><span>Estudantes</span><strong>{{ report.students }}</strong><small>no recorte atual</small></article>
+    <a class="report-metric report-metric--link" href="{{ url_for('reports.students', institution_id=institution_id, view='frequencia', series_id=series_id, class_id=class_id) }}"><span>Frequência</span><strong>{{ ('%.1f'|format(report.attendance))|replace('.', ',') }}%</strong><small>no período</small><b>Ver quem compareceu {{ icon('chevron-right') }}</b></a>
+    <a class="report-metric report-metric--link" href="{{ url_for('reports.students', institution_id=institution_id, view='faltas', series_id=series_id, class_id=class_id) }}"><span>Faltas</span><strong>{{ report.absences }}</strong><small>registros no período</small><b>Ver quem faltou {{ icon('chevron-right') }}</b></a>
+    <a class="report-metric report-metric--link" href="{{ url_for('reports.students', institution_id=institution_id, view='todos', series_id=series_id, class_id=class_id) }}"><span>Estudantes</span><strong>{{ report.students }}</strong><small>no recorte atual</small><b>Ver relação completa {{ icon('chevron-right') }}</b></a>
   </div>
 {% endmacro %}
 

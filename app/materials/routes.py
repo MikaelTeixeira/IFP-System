@@ -12,6 +12,7 @@ from ..data.materials import (
     attachment_extension,
     delete_material,
     find_material,
+    group_materials,
     update_material,
 )
 from ..data.notifications import add_notification
@@ -65,10 +66,12 @@ def uploaded_attachment(owner_id):
 @materials_bp.get("/")
 @roles_required("teacher")
 def index():
+    materials = [enrich_material(item) for item in teacher_posts()]
     return render_template(
         "materials/index.html",
         page_title="Materiais de revisão",
-        materials=[enrich_material(item) for item in teacher_posts()],
+        materials=materials,
+        material_groups=group_materials(materials),
         active_navigation="materiais",
     )
 

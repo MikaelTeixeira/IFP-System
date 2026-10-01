@@ -59,6 +59,10 @@ acessíveis para superfícies, textos e divisores.
 - Destaques em negrito reservados para dados, alertas e ações importantes.
 - Ícones sempre acompanhados de rótulos quando a ação puder gerar dúvida.
 - Movimento limitado a respostas de interação e mudanças de estado.
+- Navegação organizada por grupos de trabalho adequados a cada perfil.
+- Iconografia SVG linear e consistente em navegação, avisos e controles.
+- Superfícies em marfim para reforçar o caráter educacional sem reduzir o
+  contraste da informação.
 
 ## 5. Perfis previstos
 
@@ -309,13 +313,16 @@ A área do aluno foi ampliada com:
 - bloqueio da entrega enquanto houver questões em branco, com aviso das
   questões pendentes;
 - resultado com pontuação e revisão das respostas após o envio;
-- mural de materiais de revisão organizado por postagem, matéria e assunto;
+- biblioteca de materiais de revisão organizada primeiro por matéria, depois por
+  assunto e, dentro de cada assunto, pelas publicações dos professores;
 - material de Matemática sobre soma, subtração, multiplicação e divisão, com
   explicações curtas e exemplos.
 
 ## 11. Publicações de revisão pelo professor
 
 - Somente o Professor cria as postagens de revisão.
+- Toda publicação deve estar vinculada a uma matéria do Professor e a um assunto
+  cadastrado nessa matéria.
 - Cada publicação possui título, descrição e matéria/assunto.
 - O professor pode incluir texto ou anexar PDF, PNG, PPT ou PPTX.
 - A postagem é direcionada somente às turmas vinculadas ao professor.
@@ -374,8 +381,8 @@ A área do aluno foi ampliada com:
 - O Coordenador do Colégio inicia o simulado por uma solicitação e agenda somente após concluir a avaliação das questões.
 - A ação **Solicitar simulado** é dividida em anos participantes, matérias e
   professores responsáveis.
-- Cada matéria selecionada cria uma linha com seu nome à esquerda e um menu de
-  professores à direita.
+- Cada matéria selecionada cria uma linha com seu nome, um menu de professor e
+  a quantidade exata de questões que deverá ser entregue.
 - O menu mostra somente professores ativos da própria instituição que possuem a
   matéria vinculada ao cadastro.
 - O Professor recebe a solicitação, o prazo e as orientações da coordenação.
@@ -410,14 +417,18 @@ A área do aluno foi ampliada com:
 
 - A Coordenação do Colégio seleciona os anos participantes, as matérias, um
   professor habilitado por matéria e o prazo de entrega.
-- Cada Professor recebe a solicitação em uma caixa própria e pode enviar
-  questões do banco pessoal, reutilizar questões do histórico ou criar uma nova.
+- Cada Professor recebe uma atribuição por matéria e seleciona somente questões
+  já cadastradas no banco pessoal ou reutilizadas do histórico.
+- Questões novas são criadas exclusivamente no **Banco de questões** e só depois
+  ficam disponíveis para seleção na solicitação.
+- A interface impede a seleção acima do limite e exibe um popup quando a
+  quantidade marcada é diferente da solicitada. O servidor repete a validação.
 - A Coordenação do Colégio avalia cada questão, podendo aprová-la ou solicitar
   revisão com uma orientação escrita em popup estilizado.
 - A edição de uma questão com revisão pendente a devolve automaticamente à
   coordenação com o estado **Reenviada**.
-- O agendamento fica bloqueado até que toda matéria tenha ao menos uma questão e
-  todas as questões enviadas estejam aprovadas.
+- O agendamento fica bloqueado até que cada matéria possua exatamente a
+  quantidade solicitada e todas as questões enviadas estejam aprovadas.
 - Ao agendar, o sistema cria a aplicação somente para os anos selecionados e
   envia uma notificação interna aos alunos participantes.
 
@@ -433,6 +444,8 @@ A área do aluno foi ampliada com:
   tentativa ativa após ser fechada.
 - Questões abertas entram em **Correção pendente**; o Professor autor informa
   nota de 0 a 1, conceito opcional e comentário.
+- A área de correções do Professor separa solicitações pendentes e histórico de
+  respostas corrigidas em carrosséis navegáveis, responsivos e acessíveis por teclado.
 - Quando todas as respostas abertas são corrigidas, a tentativa muda para
   **Resultado disponível** e o Aluno recebe uma notificação.
 - Imagens e anexos são gravados em pasta controlada, enquanto caminho, nome,
@@ -450,6 +463,8 @@ As medidas que ainda exigem implementação antes de um ambiente real estão em
   com gráficos comparativos e ranking das médias.
 - Cada escola possui uma página própria com média, frequência, faltas, quantidade
   de estudantes e evolução mensal.
+- Os cartões de frequência, faltas e estudantes abrem relações nominais no mesmo
+  recorte de escola, série ou turma. O período letivo abre o histórico da escola.
 - A navegação segue a hierarquia **escola → série → turma**, preservando o contexto
   em títulos, trilha de navegação e barra superior.
 - O relatório de série compara suas turmas; o relatório de turma detalha os
@@ -462,3 +477,5 @@ As medidas que ainda exigem implementação antes de um ambiente real estão em
 - Resultados de tentativas concluídas alimentam a média quando disponíveis. Até a
   criação do diário de frequência, faltas e séries históricas permanecem como
   dados demonstrativos, com aviso visível na interface.
+- O resumo individual demonstrativo de frequência é persistido no MySQL para
+  sustentar as relações de presentes e ausentes até a implementação do diário.

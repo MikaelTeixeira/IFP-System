@@ -1,11 +1,17 @@
+{% from "macros/icons.html" import icon %}
 <aside class="sidebar" id="main-navigation" data-sidebar aria-label="Navegação principal">
-  <div class="sidebar__heading">Navegação</div>
+  <div class="sidebar__heading">Menu do perfil</div>
   <nav>
     <ul class="nav-list">
+      {% set group_state = namespace(current='') %}
       {% for item in navigation_items|default([]) %}
+        {% if item.group != group_state.current %}
+          <li class="nav-group-label" role="presentation">{{ item.group }}</li>
+          {% set group_state.current = item.group %}
+        {% endif %}
         <li>
           <a class="nav-link{% if active_navigation == item.key %} is-active{% endif %}" href="{{ item.url }}"{% if active_navigation == item.key %} aria-current="page"{% endif %}>
-            <span class="nav-link__icon" aria-hidden="true">{% if item.icon == "home" %}⌂{% elif item.icon == "place" %}⌖{% elif item.icon == "school" %}▤{% elif item.icon == "people" %}♙{% elif item.icon == "person" %}●{% elif item.icon == "class" %}▦{% elif item.icon == "curriculum" %}≡{% elif item.icon == "questions" %}?{% elif item.icon == "assessment" %}✓{% elif item.icon == "chart" %}▥{% else %}◇{% endif %}</span>
+            <span class="nav-link__icon" aria-hidden="true">{{ icon(item.icon) }}</span>
             <span>{{ item.label }}</span>
           </a>
         </li>

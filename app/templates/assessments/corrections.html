@@ -1,6 +1,88 @@
 {% extends "base.html" %}
 {% from "macros/ui.html" import empty_state, status_tag %}
+{% from "macros/icons.html" import icon %}
 {% block content %}
-  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Correções abertas</p><h1>Correções abertas</h1><p>Avalie as respostas das questões abertas que você elaborou.</p></div></header>
-  {% if records %}<section class="correction-list">{% for item in records %}<article class="correction-card"><div><span>{{ status_tag(item.attempt.status, 'warning') }}</span><h2>{{ item.assessment.titulo }}</h2><p>{{ item.student.nome }} · {{ item.pending_count }} resposta(s) aguardando sua correção</p></div><a class="button button--primary" href="{{ url_for('assessments.correction_detail', attempt_id=item.attempt.id) }}">Corrigir respostas</a></article>{% endfor %}</section>{% else %}{{ empty_state("Nenhuma correção pendente", "As respostas abertas das suas questões aparecerão aqui após a entrega dos alunos.") }}{% endif %}
+  <header class="page-header">
+    <div>
+      <p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Correções</p>
+      <h1>Correções</h1>
+      <p>Acompanhe as respostas abertas que aguardam avaliação e consulte o trabalho já corrigido.</p>
+    </div>
+  </header>
+
+  <section class="correction-carousel-section" aria-labelledby="correcoes-pendentes-titulo">
+    <div class="correction-carousel-heading">
+      <div>
+        <h2 id="correcoes-pendentes-titulo">Solicitações de correção</h2>
+        <p><strong>{{ pending_records|length }}</strong> entrega{% if pending_records|length != 1 %}s{% endif %} aguardando sua avaliação.</p>
+      </div>
+      {% if pending_records %}
+        <div class="carousel-controls" aria-label="Navegação das solicitações de correção">
+          <span class="carousel-position" data-carousel-position aria-live="polite"></span>
+          <button class="carousel-button" type="button" data-carousel-previous aria-label="Ver solicitação anterior" aria-controls="correcoes-pendentes">{{ icon('chevron-left') }}</button>
+          <button class="carousel-button" type="button" data-carousel-next aria-label="Ver próxima solicitação" aria-controls="correcoes-pendentes">{{ icon('chevron-right') }}</button>
+        </div>
+      {% endif %}
+    </div>
+    {% if pending_records %}
+      <div class="correction-carousel" data-carousel>
+        <div class="correction-carousel__track" id="correcoes-pendentes" data-carousel-track tabindex="0">
+          {% for item in pending_records %}
+            <article class="correction-card correction-card--pending" data-carousel-item>
+              <div class="correction-card__top">
+                {{ status_tag(item.attempt.status, 'warning') }}
+                <span>Entrega {{ loop.index }} de {{ pending_records|length }}</span>
+              </div>
+              <div class="correction-card__body">
+                <h3>{{ item.assessment.titulo }}</h3>
+                <p class="correction-card__student">{{ item.student.nome }}</p>
+                <p><strong>{{ item.pending_count }}</strong> resposta{% if item.pending_count != 1 %}s{% endif %} aberta{% if item.pending_count != 1 %}s{% endif %} aguardando correção.</p>
+              </div>
+              <a class="button button--primary" href="{{ url_for('assessments.correction_detail', attempt_id=item.attempt.id) }}">Corrigir respostas</a>
+            </article>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      {{ empty_state("Nenhuma correção pendente", "As respostas abertas das suas questões aparecerão aqui após a entrega dos alunos.") }}
+    {% endif %}
+  </section>
+
+  <section class="correction-carousel-section correction-carousel-section--history" aria-labelledby="historico-correcoes-titulo">
+    <div class="correction-carousel-heading">
+      <div>
+        <h2 id="historico-correcoes-titulo">Histórico de correções</h2>
+        <p>Consulte notas, conceitos e comentários enviados aos alunos.</p>
+      </div>
+      {% if history_records %}
+        <div class="carousel-controls" aria-label="Navegação do histórico de correções">
+          <span class="carousel-position" data-carousel-position aria-live="polite"></span>
+          <button class="carousel-button" type="button" data-carousel-previous aria-label="Ver correção anterior" aria-controls="historico-correcoes">{{ icon('chevron-left') }}</button>
+          <button class="carousel-button" type="button" data-carousel-next aria-label="Ver próxima correção" aria-controls="historico-correcoes">{{ icon('chevron-right') }}</button>
+        </div>
+      {% endif %}
+    </div>
+    {% if history_records %}
+      <div class="correction-carousel" data-carousel>
+        <div class="correction-carousel__track" id="historico-correcoes" data-carousel-track tabindex="0">
+          {% for item in history_records %}
+            <article class="correction-card correction-card--history" data-carousel-item>
+              <div class="correction-card__top">
+                {{ status_tag("Corrigida", "success") }}
+                <time datetime="{{ item.last_graded_at.isoformat() }}">{{ item.last_graded_at.strftime('%d/%m/%Y às %H:%M') }}</time>
+              </div>
+              <div class="correction-card__body">
+                <h3>{{ item.assessment.titulo }}</h3>
+                <p class="correction-card__student">{{ item.student.nome }}</p>
+                <p><strong>{{ item.graded_count }}</strong> resposta{% if item.graded_count != 1 %}s{% endif %} corrigida{% if item.graded_count != 1 %}s{% endif %} · média <strong>{{ '%.1f'|format(item.average_grade) }}</strong> de 1.</p>
+              </div>
+              <a class="button button--secondary" href="{{ url_for('assessments.correction_detail', attempt_id=item.attempt.id) }}">Ver correção</a>
+            </article>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      {{ empty_state("Nenhuma correção no histórico", "As respostas avaliadas ficarão registradas aqui para consulta.") }}
+    {% endif %}
+  </section>
 {% endblock %}

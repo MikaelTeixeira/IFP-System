@@ -4,7 +4,6 @@
   <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('questions.list_questions') }}">Banco de questões</a> <span aria-hidden="true">/</span> {{ page_title }}</p><h1>{{ page_title }}</h1><p>Classifique a questão usando uma matéria e um assunto do catálogo.</p></div></header>
   {% if error %}{{ alert("Não foi possível salvar a questão", error, "danger") }}{% endif %}
   <form class="question-form" method="post" enctype="multipart/form-data">
-    {% if assessment_request_id %}<input type="hidden" name="solicitacao_id" value="{{ assessment_request_id }}">{% endif %}
     <section class="form-section"><div class="form-section__heading"><span>1</span><div><h2>Classificação</h2><p>Identifique a operação e o nível da questão.</p></div></div><div class="edit-form__fields">
       <div class="field"><label for="materia_id">Matéria</label><select id="materia_id" name="materia_id" data-subject-select required><option value="">Selecione</option>{% for subject in subjects %}<option value="{{ subject.id }}"{% if question.get('materia_id') == subject.id %} selected{% endif %}>{{ subject.nome }}</option>{% endfor %}</select></div>
       <div class="field"><label for="assunto_id">Assunto</label><select id="assunto_id" name="assunto_id" data-topic-select required><option value="">Selecione</option>{% for topic in topics %}<option value="{{ topic.id }}" data-subject="{{ topic.materia_id }}"{% if question.get('assunto_id') == topic.id %} selected{% endif %}>{{ topic.nome }}</option>{% endfor %}</select></div>

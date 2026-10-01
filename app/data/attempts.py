@@ -98,6 +98,25 @@ def attempts_with_pending_answers(teacher_id):
     return attempts
 
 
+def attempts_with_graded_answers(teacher_id):
+    attempts = []
+    for attempt in AssessmentAttempt.query.order_by(AssessmentAttempt.submitted_at.desc()).all():
+        graded = [
+            answer for answer in attempt.answers
+            if answer.is_open and answer.grade is not None and answer.grader_id == teacher_id
+        ]
+        if graded:
+            attempts.append((attempt, graded))
+    attempts.sort(
+        key=lambda item: max(
+            (answer.graded_at for answer in item[1] if answer.graded_at),
+            default=item[0].submitted_at or item[0].started_at,
+        ),
+        reverse=True,
+    )
+    return attempts
+
+
 def grade_open_answers(attempt, teacher_id, values):
     graded = 0
     for answer in attempt.answers:

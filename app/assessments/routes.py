@@ -24,7 +24,7 @@ from ..data.curriculum import find_subject, subjects_for_profile
 from ..data.questions import QUESTIONS, find_question, persist_question
 from ..data.notifications import add_notification, add_role_notification
 from ..data.reviews import add_review_event
-from ..data.attempts import attempts_with_pending_answers, grade_open_answers
+from ..data.attempts import attempts_with_graded_answers, attempts_with_pending_answers, grade_open_answers
 from ..extensions import db
 from ..models import AssessmentAttempt
 
@@ -95,6 +95,7 @@ def enrich_request(assessment_request):
         detailed = {
             "materia": subject_lookup.get(assignment["materia_id"]),
             "professor": find("professores", assignment["professor_id"]),
+            "quantidade_questoes": max(1, int(assignment.get("quantidade_questoes", 1))),
             "entregas": [],
         }
         for submission in assignment.get("entregas", []):
@@ -148,13 +149,25 @@ def request_assessment():
         selected_subjects = list(dict.fromkeys(item for item in selected_subjects if item in allowed_subjects))
         assignments = []
         invalid_assignment = False
+        invalid_quantity = False
         for subject_id in selected_subjects:
             teacher_id = request.form.get(f"professor_{subject_id}", "")
             eligible_ids = {teacher["id"] for teacher in eligible_teachers[subject_id]}
+            try:
+                question_count = int(request.form.get(f"quantidade_{subject_id}", ""))
+                if question_count < 1 or question_count > 50:
+                    invalid_quantity = True
+            except (TypeError, ValueError):
+                question_count = 0
+                invalid_quantity = True
             if teacher_id not in eligible_ids:
                 invalid_assignment = True
             else:
-                assignments.append({"materia_id": subject_id, "professor_id": teacher_id})
+                assignments.append({
+                    "materia_id": subject_id,
+                    "professor_id": teacher_id,
+                    "quantidade_questoes": question_count,
+                })
 
         if not selected_series:
             error = "Selecione ao menos um ano para o simulado."
@@ -162,6 +175,8 @@ def request_assessment():
             error = "Selecione ao menos uma matéria."
         elif invalid_assignment or len(assignments) != len(selected_subjects):
             error = "Escolha um professor habilitado para cada matéria selecionada."
+        elif invalid_quantity:
+            error = "Informe entre 1 e 50 questões para cada matéria selecionada."
         elif not request.form.get("prazo", "").strip():
             error = "Defina o prazo para os professores enviarem as questões."
         else:
@@ -185,8 +200,9 @@ def request_assessment():
                 subject = find_subject(assignment["materia_id"])
                 add_role_notification(
                     "teacher", assignment["professor_id"], "Nova solicitação de simulado",
-                    f"Você foi designado para {subject['nome']}. Prazo: {assessment_request['prazo']}.",
-                    url_for("assessments.answer_request", request_id=assessment_request["id"]), "assessment_request",
+                    f"Você foi designado para {subject['nome']} e deve enviar {assignment['quantidade_questoes']} "
+                    f"{'questão' if assignment['quantidade_questoes'] == 1 else 'questões'}. Prazo: {assessment_request['prazo']}.",
+                    url_for("assessments.answer_request", request_id=assessment_request["id"], materia_id=assignment["materia_id"]), "assessment_request",
                 )
             flash("Solicitação enviada aos professores responsáveis.", "success")
             return redirect(url_for("assessments.request_detail", request_id=assessment_request["id"]))
@@ -231,14 +247,12 @@ def teacher_requests():
         abort(403)
     records = []
     for assessment_request in ASSESSMENT_REQUESTS:
-        assignment = find_request_assignment(assessment_request, profile["teacher_id"])
-        if assignment:
-            item = enrich_request(assessment_request)
-            item["minha_atribuicao"] = next(
-                detail for detail in item["atribuicoes_detalhadas"]
-                if detail["professor"]["id"] == profile["teacher_id"]
-            )
-            records.append(item)
+        item = enrich_request(assessment_request)
+        for detail in item["atribuicoes_detalhadas"]:
+            if detail["professor"]["id"] == profile["teacher_id"]:
+                teacher_item = dict(item)
+                teacher_item["minha_atribuicao"] = detail
+                records.append(teacher_item)
     return render_template(
         "assessments/teacher_requests.html",
         page_title="Solicitações de questões",
@@ -253,13 +267,35 @@ def corrections():
     profile = current_profile()
     if profile["key"] != "teacher":
         abort(403)
-    records = []
+    pending_records = []
     for attempt, pending in attempts_with_pending_answers(profile["teacher_id"]):
         assessment = find_assessment(attempt.assessment_id)
         student = find("alunos", attempt.student_id)
         if assessment and student:
-            records.append({"attempt": attempt, "assessment": assessment, "student": student, "pending_count": len(pending)})
-    return render_template("assessments/corrections.html", page_title="Correções abertas", records=records, active_navigation="correcoes")
+            pending_records.append({"attempt": attempt, "assessment": assessment, "student": student, "pending_count": len(pending)})
+    history_records = []
+    for attempt, graded in attempts_with_graded_answers(profile["teacher_id"]):
+        assessment = find_assessment(attempt.assessment_id)
+        student = find("alunos", attempt.student_id)
+        if assessment and student:
+            history_records.append({
+                "attempt": attempt,
+                "assessment": assessment,
+                "student": student,
+                "graded_count": len(graded),
+                "last_graded_at": max(
+                    (answer.graded_at for answer in graded if answer.graded_at),
+                    default=attempt.submitted_at or attempt.started_at,
+                ),
+                "average_grade": sum(answer.grade for answer in graded) / len(graded),
+            })
+    return render_template(
+        "assessments/corrections.html",
+        page_title="Correções",
+        pending_records=pending_records,
+        history_records=history_records,
+        active_navigation="correcoes",
+    )
 
 
 @assessments_bp.route("/correcoes/<attempt_id>", methods=["GET", "POST"])
@@ -307,23 +343,29 @@ def answer_request(request_id):
     assessment_request = find_assessment_request(request_id)
     if not assessment_request:
         abort(404)
-    assignment = find_request_assignment(assessment_request, profile["teacher_id"])
+    requested_subject_id = request.values.get("materia_id", "").strip() or None
+    assignment = find_request_assignment(assessment_request, profile["teacher_id"], requested_subject_id)
     if not assignment:
         abort(403)
     subject_id = assignment["materia_id"]
+    requested_count = max(1, int(assignment.get("quantidade_questoes", 1)))
+    submitted_count = len(assignment.get("entregas", []))
+    remaining_count = max(0, requested_count - submitted_count)
     submitted_ids = {item["question_id"] for item in assignment.get("entregas", [])}
+    history_ids = teacher_request_history(profile["teacher_id"], subject_id, exclude_request_id=request_id)
+    history_ids = [item_id for item_id in history_ids if item_id not in submitted_ids]
+    history_id_set = set(history_ids)
     bank_questions = [
         item for item in QUESTIONS
         if item.get("autor_id") == profile["teacher_id"] and item.get("materia_id") == subject_id
-        and item["id"] not in submitted_ids
+        and item["id"] not in submitted_ids and item["id"] not in history_id_set
     ]
-    history_ids = teacher_request_history(profile["teacher_id"], subject_id, exclude_request_id=request_id)
-    history_ids = [item_id for item_id in history_ids if item_id not in submitted_ids]
     history_questions = [find_question(item_id) for item_id in history_ids if find_question(item_id)]
+    selection_error = None
     if request.method == "POST":
         if assessment_request["status"] in {"Pronto para agendar", "Agendado"}:
             flash("Esta solicitação já foi finalizada pela coordenação.", "danger")
-            return redirect(url_for("assessments.answer_request", request_id=request_id))
+            return redirect(url_for("assessments.answer_request", request_id=request_id, materia_id=subject_id))
         selections = []
         for source, field in (("Banco de questões", "bank_question_ids"), ("Histórico", "history_question_ids")):
             for question_id in request.form.getlist(field):
@@ -331,10 +373,21 @@ def answer_request(request_id):
                 if (question and question.get("autor_id") == profile["teacher_id"]
                         and question.get("materia_id") == subject_id):
                     selections.append((question_id, source))
-        if not selections:
-            flash("Selecione ao menos uma questão para enviar.", "danger")
+        selections = list(dict(selections).items())
+        if remaining_count <= 0:
+            selection_error = "A quantidade solicitada já foi enviada. Aguarde a avaliação da coordenação."
+        elif len(selections) != remaining_count:
+            question_label = "questão" if remaining_count == 1 else "questões"
+            request_description = (
+                "a questão solicitada" if requested_count == 1
+                else f"as {requested_count} questões solicitadas"
+            )
+            selection_error = (
+                f"Selecione exatamente {remaining_count} {question_label} para completar "
+                f"{request_description} pela coordenação."
+            )
         else:
-            for question_id, source in dict(selections).items():
+            for question_id, source in selections:
                 submit_request_question(assessment_request, profile["teacher_id"], subject_id, question_id, source)
             add_role_notification(
                 "school_coordinator", assessment_request["instituicao_id"], "Questões recebidas",
@@ -342,16 +395,26 @@ def answer_request(request_id):
                 url_for("assessments.request_detail", request_id=request_id), "questions_submitted",
             )
             flash("Questões enviadas para avaliação da coordenação.", "success")
-            return redirect(url_for("assessments.answer_request", request_id=request_id))
+            return redirect(url_for("assessments.answer_request", request_id=request_id, materia_id=subject_id))
+    enriched_request = enrich_request(assessment_request)
+    detailed_assignment = next(
+        item for item in enriched_request["atribuicoes_detalhadas"]
+        if item["materia"]["id"] == subject_id and item["professor"]["id"] == profile["teacher_id"]
+    )
     return render_template(
         "assessments/teacher_request_detail.html",
         page_title="Responder solicitação",
-        assessment_request=enrich_request(assessment_request),
+        assessment_request=enriched_request,
+        detailed=detailed_assignment,
         assignment=assignment,
         bank_questions=bank_questions,
         history_questions=history_questions,
+        requested_count=requested_count,
+        submitted_count=submitted_count,
+        remaining_count=remaining_count,
+        selection_error=selection_error,
         active_navigation="solicitacoes-questoes",
-    )
+    ), 400 if selection_error else 200
 
 
 def school_request_or_403(request_id):

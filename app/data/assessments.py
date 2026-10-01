@@ -123,7 +123,8 @@ def refresh_request_status(assessment_request):
     assignments = assessment_request.get("atribuicoes", [])
     submissions = [submission for item in assignments for submission in item.get("entregas", [])]
     ready = bool(assignments) and all(
-        item.get("entregas") and all(submission["status"] == "Aprovada" for submission in item["entregas"])
+        len(item.get("entregas", [])) == max(1, int(item.get("quantidade_questoes", 1)))
+        and all(submission["status"] == "Aprovada" for submission in item["entregas"])
         for item in assignments
     )
     if ready:

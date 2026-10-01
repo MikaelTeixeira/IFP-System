@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import empty_state, status_tag %}
+{% block page_context %}
+  {% set context_items = [institution.nome, series.nome if series else 'Todas as séries', school_class.nome if school_class else 'Todas as turmas'] %}
+  {% include "partials/context_bar.html" %}
+{% endblock %}
+{% block content %}
+  <header class="page-header report-page-header">
+    <div>
+      <p class="breadcrumb"><a href="{{ url_for('reports.school', institution_id=institution.id) }}">{{ institution.nome }}</a>{% if series %} <span aria-hidden="true">/</span> <a href="{{ url_for('reports.series', institution_id=institution.id, series_id=series.id) }}">{{ series.nome }}</a>{% endif %}{% if school_class %} <span aria-hidden="true">/</span> <a href="{{ url_for('reports.school_class', institution_id=institution.id, series_id=series.id, class_id=school_class.id) }}">{{ school_class.nome }}</a>{% endif %} <span aria-hidden="true">/</span> Estudantes</p>
+      <h1>{{ view_config.title }}</h1>
+      <p><strong>Frequência escolar.</strong> {{ view_config.description }}</p>
+    </div>
+    <div class="report-list-total"><strong>{{ records|length }}</strong><span>de {{ total_students }} estudantes</span></div>
+  </header>
+
+  <nav class="report-view-tabs" aria-label="Relações de estudantes">
+    <a class="{% if selected_view == 'frequencia' %}is-active{% endif %}" href="{{ url_for('reports.students', institution_id=institution.id, view='frequencia', series_id=series.id if series else None, class_id=school_class.id if school_class else None) }}">Compareceram</a>
+    <a class="{% if selected_view == 'faltas' %}is-active{% endif %}" href="{{ url_for('reports.students', institution_id=institution.id, view='faltas', series_id=series.id if series else None, class_id=school_class.id if school_class else None) }}">Faltaram</a>
+    <a class="{% if selected_view == 'todos' %}is-active{% endif %}" href="{{ url_for('reports.students', institution_id=institution.id, view='todos', series_id=series.id if series else None, class_id=school_class.id if school_class else None) }}">Todos os estudantes</a>
+  </nav>
+
+  {% if records %}
+    <div class="data-panel report-student-list">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Estudante</th><th>Matrícula</th><th>Série</th><th>Turma</th><th>Frequência</th><th>Faltas</th><th>Último registro</th></tr></thead>
+          <tbody>
+            {% for student in records %}
+              <tr>
+                <td><strong>{{ student.nome }}</strong></td>
+                <td>{{ student.matricula }}</td>
+                <td>{{ student.serie }}</td>
+                <td>{{ student.turma }}</td>
+                <td>{{ ('%.1f'|format(student.attendance))|replace('.', ',') }}%</td>
+                <td>{{ student.absences }}</td>
+                <td>{{ status_tag(student.latest_status, 'success' if student.latest_status == 'Presente' else 'warning') }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    {{ empty_state("Nenhum estudante nesta relação", "Não há estudantes com esse estado no último registro de frequência do período.") }}
+  {% endif %}
+
+  <p class="report-data-note"><strong>Sobre os dados:</strong> a frequência individual e o último registro estão persistidos como demonstração. O diário de frequência substituirá esses valores quando for implementado.</p>
+{% endblock %}
