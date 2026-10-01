@@ -1,30 +1,74 @@
 {% extends "base.html" %}
 {% from "macros/ui.html" import empty_state, status_tag %}
 {% block content %}
-  <header class="page-header">
-    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Banco de questões</p><h1>Banco de questões</h1><p>Escolha primeiro a <strong>matéria</strong>, depois o <strong>assunto</strong> e consulte as questões disponíveis.</p></div>
+  <header class="page-header question-bank-header">
+    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Banco de questões</p><h1>Banco de questões</h1><p>Navegue pelo acervo em duas etapas: escolha uma <strong>matéria</strong> e depois um <strong>assunto</strong>.</p></div>
     <div class="page-actions"><a class="button button--secondary" href="{{ url_for('curriculum.index') }}">{{ curriculum_label }}</a>{% if can_create %}<a class="button button--primary" href="{{ url_for('questions.create') }}">Adicionar questão</a>{% endif %}</div>
   </header>
-  <form class="question-navigation" method="get" aria-label="Seleção do banco de questões">
-    <div class="question-navigation__step"><span>1</span><div class="field"><label for="materia_id">Matéria</label><select id="materia_id" name="materia_id" data-subject-select><option value="">Selecione a matéria</option>{% for subject in subjects %}<option value="{{ subject.id }}"{% if selected_subject == subject.id %} selected{% endif %}>{{ subject.nome }}{% if subject.escopo == 'instituicao' %} — instituição{% endif %}</option>{% endfor %}</select></div></div>
-    <div class="question-navigation__step"><span>2</span><div class="field"><label for="assunto_id">Assunto</label><select id="assunto_id" name="assunto_id" data-topic-select{% if not selected_subject %} disabled{% endif %}><option value="">Selecione o assunto</option>{% for topic in topics %}<option value="{{ topic.id }}" data-subject="{{ topic.materia_id }}"{% if selected_topic == topic.id %} selected{% endif %}>{{ topic.nome }}</option>{% endfor %}</select></div></div>
-    <button class="button button--primary" type="submit">3. Ver questões</button>
-  </form>
-  {% if selected_subject and selected_topic %}<form class="filter-bar" method="get" aria-label="Filtros do banco de questões"><input type="hidden" name="materia_id" value="{{ selected_subject }}"><input type="hidden" name="assunto_id" value="{{ selected_topic }}">
-    <div class="field filter-bar__search"><label for="q">Buscar</label><input id="q" name="q" value="{{ query }}" placeholder="Busque pelo enunciado ou autor"></div>
-    <div class="field"><label for="operacao">Operação</label><select id="operacao" name="operacao"><option value="">Todas</option>{% for value in ['Soma', 'Subtração', 'Multiplicação', 'Divisão'] %}<option value="{{ value }}"{% if selected_operation == value %} selected{% endif %}>{{ value }}</option>{% endfor %}</select></div>
-    <div class="field"><label for="dificuldade">Dificuldade</label><select id="dificuldade" name="dificuldade"><option value="">Todas</option>{% for value in ['Fácil', 'Média', 'Difícil'] %}<option value="{{ value }}"{% if selected_difficulty == value %} selected{% endif %}>{{ value }}</option>{% endfor %}</select></div>
-    <div class="field"><label for="revisao">Revisão</label><select id="revisao" name="revisao"><option value="">Todos os estados</option><option value="aguardando"{% if selected_revision == 'aguardando' %} selected{% endif %}>Aguardando revisão</option>{% for value in ['Pendente', 'Em revisão', 'Revisada', 'Aprovada'] %}<option value="{{ value }}"{% if selected_revision == value %} selected{% endif %}>{{ value }}</option>{% endfor %}</select></div>
-    <button class="button button--secondary" type="submit">Aplicar filtros</button>
-  </form>{% endif %}
-  {% if records %}<section class="question-bank" aria-label="Questões encontradas">
-    <div class="data-panel__meta"><strong>{{ pagination.total }} questões</strong><span>Página {{ pagination.page }} de {{ pagination.pages }}</span></div>
-    {% for question in records %}<article class="question-row question-row--{{ question.operacao|lower|replace('ç', 'c')|replace('ã', 'a') }}">
-      <div class="question-row__number">{{ question.id.split('-')[-1] }}</div>
-      <div class="question-row__body"><div class="question-row__meta"><span>{{ 'Aberta' if question.get('tipo') == 'aberta' else 'Objetiva' }}</span><span>{{ question.operacao }}</span><span>{{ question.dificuldade }}</span><span>{{ question.get('revisao_status') or question.status }}</span></div><h2><a href="{{ url_for('questions.detail', question_id=question.id) }}">{{ question.enunciado|question_text }}</a></h2><p>{{ question.disciplina }} · {{ question.assunto }} · por {{ question.autor }}</p></div>
-      <div class="question-row__actions"><a class="button button--small button--quiet" href="{{ url_for('questions.detail', question_id=question.id) }}">Ver questão</a>{% if can_edit %}{% if question.get('revisao_status') == 'Pendente' and current_profile.key == 'teacher' %}<form method="post" action="{{ url_for('questions.start_revision', question_id=question.id) }}"><button class="button button--small button--primary" type="submit">Iniciar revisão</button></form>{% else %}<a class="button button--small button--secondary" href="{{ url_for('questions.edit', question_id=question.id) }}">Editar</a>{% endif %}{% elif can_request_revision %}{% if question.get('revisao_status') == 'Revisada' %}<form method="post" action="{{ url_for('questions.approve_revision', question_id=question.id) }}"><button class="button button--small button--primary" type="submit">Aprovar revisão</button></form>{% elif question.get('revisao_status') not in ['Pendente', 'Em revisão'] %}<button class="button button--small button--secondary" type="button" data-request-question-revision data-question-name="Questão {{ question.id.split('-')[-1] }}" data-question-action="{{ url_for('questions.request_revision', question_id=question.id) }}">Solicitar revisão</button>{% endif %}{% endif %}</div>
-    </article>{% endfor %}
-    {% if pagination.pages > 1 %}<nav class="pagination" aria-label="Paginação">{% for number in range(1, pagination.pages + 1) %}<a class="pagination__link{% if number == pagination.page %} is-current{% endif %}" href="{{ url_for('questions.list_questions', page=number, materia_id=selected_subject, assunto_id=selected_topic, q=query, operacao=selected_operation, dificuldade=selected_difficulty, revisao=selected_revision) }}">{{ number }}</a>{% endfor %}</nav>{% endif %}
-  </section>{% elif selected_subject and selected_topic %}{{ empty_state("Nenhuma questão encontrada", "Ajuste os filtros ou adicione uma questão para este assunto.") }}{% else %}{{ empty_state("Selecione matéria e assunto", "Use as etapas acima para abrir o conjunto de questões desejado.") }}{% endif %}
+
+  <section class="progressive-explorer" data-progressive-explorer aria-labelledby="progressive-explorer-title">
+    <div class="progressive-explorer__intro">
+      <div><span>Explorar acervo</span><h2 id="progressive-explorer-title">Encontre o conteúdo que procura</h2><p>A seleção acontece automaticamente, sem formulários ou etapas extras.</p></div>
+      <ol class="progressive-explorer__path" aria-label="Progresso da seleção">
+        <li class="{% if selected_subject %}is-complete{% else %}is-current{% endif %}"><b>1</b><span><small>Matéria</small><strong>{{ selected_subject_record.nome if selected_subject_record else 'Escolha uma' }}</strong></span></li>
+        <li class="{% if selected_topic %}is-complete{% elif selected_subject %}is-current{% endif %}"><b>2</b><span><small>Assunto</small><strong>{{ selected_topic_record.nome if selected_topic_record else 'Próxima etapa' }}</strong></span></li>
+      </ol>
+    </div>
+
+    <div class="progressive-explorer__stage">
+      <header class="progressive-explorer__stage-heading"><span>01</span><div><small>Primeiro passo</small><h3>Escolha a matéria</h3><p>Deslize para explorar todas as áreas disponíveis.</p></div></header>
+      {% if subjects %}<div class="progressive-carousel-frame" data-progressive-carousel-group>
+        <button class="progressive-carousel__control progressive-carousel__control--previous" type="button" data-carousel-previous aria-label="Ver matérias anteriores">{{ icon('chevron-left') }}</button>
+        <div class="progressive-choice-carousel" data-progressive-carousel tabindex="0" aria-label="Matérias disponíveis">
+          {% for subject in subjects %}<a class="progressive-choice-card progressive-choice-card--subject{% if selected_subject == subject.id %} is-selected{% endif %}" href="{{ url_for('questions.list_questions', materia_id=subject.id, _anchor='assuntos') }}"{% if selected_subject == subject.id %} aria-current="true"{% endif %}>
+            <span class="progressive-choice-card__icon" aria-hidden="true">{{ icon('curriculum') }}</span>
+            <span class="progressive-choice-card__copy"><small>{{ 'Matéria da instituição' if subject.escopo == 'instituicao' else 'Matéria global' }}</small><strong>{{ subject.nome }}</strong><span>{{ subject_topic_counts.get(subject.id, 0) }} {{ 'assunto' if subject_topic_counts.get(subject.id, 0) == 1 else 'assuntos' }} · {{ subject_question_counts.get(subject.id, 0) }} {{ 'questão' if subject_question_counts.get(subject.id, 0) == 1 else 'questões' }}</span></span>
+            <span class="progressive-choice-card__state">{% if selected_subject == subject.id %}Selecionada {{ icon('check') }}{% else %}Escolher {{ icon('chevron-right') }}{% endif %}</span>
+          </a>{% endfor %}
+        </div>
+        <button class="progressive-carousel__control progressive-carousel__control--next" type="button" data-carousel-next aria-label="Ver próximas matérias">{{ icon('chevron-right') }}</button>
+      </div>{% else %}{{ empty_state("Nenhuma matéria disponível", "Cadastre uma matéria para começar a organizar o banco de questões.") }}{% endif %}
+    </div>
+
+    {% if selected_subject %}<div class="progressive-explorer__stage progressive-explorer__stage--topics" id="assuntos">
+      <header class="progressive-explorer__stage-heading"><span>02</span><div><small>{{ selected_subject_record.nome }}</small><h3>Agora escolha o assunto</h3><p>As questões serão abertas assim que você fizer a seleção.</p></div></header>
+      {% if selected_topics %}<div class="progressive-carousel-frame" data-progressive-carousel-group>
+        <button class="progressive-carousel__control progressive-carousel__control--previous" type="button" data-carousel-previous aria-label="Ver assuntos anteriores">{{ icon('chevron-left') }}</button>
+        <div class="progressive-choice-carousel progressive-choice-carousel--topics" data-progressive-carousel tabindex="0" aria-label="Assuntos de {{ selected_subject_record.nome }}">
+          {% for topic in selected_topics %}<a class="progressive-choice-card progressive-choice-card--topic{% if selected_topic == topic.id %} is-selected{% endif %}" href="{{ url_for('questions.list_questions', materia_id=selected_subject, assunto_id=topic.id, _anchor='questoes') }}"{% if selected_topic == topic.id %} aria-current="true"{% endif %}>
+            <span class="progressive-choice-card__index">{{ '%02d'|format(loop.index) }}</span>
+            <span class="progressive-choice-card__copy"><small>Assunto</small><strong>{{ topic.nome }}</strong><span>{{ topic_question_counts.get(topic.id, 0) }} {{ 'questão' if topic_question_counts.get(topic.id, 0) == 1 else 'questões' }} no acervo</span></span>
+            <span class="progressive-choice-card__state">{% if selected_topic == topic.id %}Selecionado {{ icon('check') }}{% else %}Escolher {{ icon('chevron-right') }}{% endif %}</span>
+          </a>{% endfor %}
+        </div>
+        <button class="progressive-carousel__control progressive-carousel__control--next" type="button" data-carousel-next aria-label="Ver próximos assuntos">{{ icon('chevron-right') }}</button>
+      </div>{% else %}{{ empty_state("Nenhum assunto cadastrado", "Esta matéria ainda não possui assuntos disponíveis para consulta.") }}{% endif %}
+    </div>{% else %}<div class="progressive-explorer__prompt"><span aria-hidden="true">{{ icon('layers') }}</span><div><strong>Os assuntos aparecem aqui</strong><p>Selecione uma matéria acima para continuar.</p></div></div>{% endif %}
+  </section>
+
+  {% if selected_subject and selected_topic %}<section class="question-results" id="questoes" aria-labelledby="question-results-title">
+    <header class="question-results__header"><div><span>{{ selected_subject_record.nome }}</span><h2 id="question-results-title">{{ selected_topic_record.nome }}</h2><p><strong>{{ pagination.total }}</strong> {{ 'questão encontrada' if pagination.total == 1 else 'questões encontradas' }} neste assunto.</p></div>
+      <details class="question-refine"{% if query or selected_operation or selected_difficulty or selected_revision %} open{% endif %}><summary>{{ icon('layers') }} Filtrar resultados</summary>
+        <form class="filter-bar question-refine__form" method="get" aria-label="Filtros do banco de questões"><input type="hidden" name="materia_id" value="{{ selected_subject }}"><input type="hidden" name="assunto_id" value="{{ selected_topic }}">
+          <div class="field filter-bar__search"><label for="q">Buscar</label><input id="q" name="q" value="{{ query }}" placeholder="Enunciado ou autor"></div>
+          <div class="field"><label for="operacao">Operação</label><select id="operacao" name="operacao"><option value="">Todas</option>{% for value in ['Soma', 'Subtração', 'Multiplicação', 'Divisão'] %}<option value="{{ value }}"{% if selected_operation == value %} selected{% endif %}>{{ value }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="dificuldade">Dificuldade</label><select id="dificuldade" name="dificuldade"><option value="">Todas</option>{% for value in ['Fácil', 'Média', 'Difícil'] %}<option value="{{ value }}"{% if selected_difficulty == value %} selected{% endif %}>{{ value }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="revisao">Revisão</label><select id="revisao" name="revisao"><option value="">Todos os estados</option><option value="aguardando"{% if selected_revision == 'aguardando' %} selected{% endif %}>Aguardando revisão</option>{% for value in ['Pendente', 'Em revisão', 'Revisada', 'Aprovada'] %}<option value="{{ value }}"{% if selected_revision == value %} selected{% endif %}>{{ value }}</option>{% endfor %}</select></div>
+          <button class="button button--secondary" type="submit">Aplicar filtros</button>
+        </form>
+      </details>
+    </header>
+
+    {% if records %}<div class="question-bank" aria-label="Questões encontradas">
+      <div class="data-panel__meta"><strong>{{ pagination.total }} questões</strong><span>Página {{ pagination.page }} de {{ pagination.pages }}</span></div>
+      {% for question in records %}<article class="question-row question-row--{{ question.operacao|lower|replace('ç', 'c')|replace('ã', 'a') }}">
+        <div class="question-row__number">{{ question.id.split('-')[-1] }}</div>
+        <div class="question-row__body"><div class="question-row__meta"><span>{{ 'Aberta' if question.get('tipo') == 'aberta' else 'Objetiva' }}</span><span>{{ question.operacao }}</span><span>{{ question.dificuldade }}</span><span>{{ question.get('revisao_status') or question.status }}</span></div><h2><a href="{{ url_for('questions.detail', question_id=question.id) }}">{{ question.enunciado|question_text }}</a></h2><p>{{ question.disciplina }} · {{ question.assunto }} · por {{ question.autor }}</p></div>
+        <div class="question-row__actions"><a class="button button--small button--quiet" href="{{ url_for('questions.detail', question_id=question.id) }}">Ver questão</a>{% if can_edit %}{% if question.get('revisao_status') == 'Pendente' and current_profile.key == 'teacher' %}<form method="post" action="{{ url_for('questions.start_revision', question_id=question.id) }}"><button class="button button--small button--primary" type="submit">Iniciar revisão</button></form>{% else %}<a class="button button--small button--secondary" href="{{ url_for('questions.edit', question_id=question.id) }}">Editar</a>{% endif %}{% elif can_request_revision %}{% if question.get('revisao_status') == 'Revisada' %}<form method="post" action="{{ url_for('questions.approve_revision', question_id=question.id) }}"><button class="button button--small button--primary" type="submit">Aprovar revisão</button></form>{% elif question.get('revisao_status') not in ['Pendente', 'Em revisão'] %}<button class="button button--small button--secondary" type="button" data-request-question-revision data-question-name="Questão {{ question.id.split('-')[-1] }}" data-question-action="{{ url_for('questions.request_revision', question_id=question.id) }}">Solicitar revisão</button>{% endif %}{% endif %}</div>
+      </article>{% endfor %}
+      {% if pagination.pages > 1 %}<nav class="pagination" aria-label="Paginação">{% for number in range(1, pagination.pages + 1) %}<a class="pagination__link{% if number == pagination.page %} is-current{% endif %}" href="{{ url_for('questions.list_questions', page=number, materia_id=selected_subject, assunto_id=selected_topic, q=query, operacao=selected_operation, dificuldade=selected_difficulty, revisao=selected_revision, _anchor='questoes') }}">{{ number }}</a>{% endfor %}</nav>{% endif %}
+    </div>{% else %}{{ empty_state("Nenhuma questão encontrada", "Ajuste os filtros ou adicione uma questão para este assunto.") }}{% endif %}
+  </section>{% endif %}
+
   {% if can_request_revision %}<dialog class="site-dialog site-dialog--warning" data-question-revision-dialog aria-labelledby="question-revision-title"><div class="site-dialog__mark" aria-hidden="true">!</div><h2 id="question-revision-title">Solicitar revisão</h2><p data-question-revision-message>Explique ao professor o que precisa ser ajustado.</p><form method="post" data-question-revision-form><div class="field"><label for="revision-note-list">Orientação para o professor</label><textarea id="revision-note-list" name="observacao" rows="4" required placeholder="Descreva de forma objetiva o ajuste necessário."></textarea></div><div class="dialog-actions"><button class="button button--secondary" type="button" data-question-revision-close>Cancelar</button><button class="button button--primary" type="submit">Enviar solicitação</button></div></form></dialog>{% endif %}
 {% endblock %}

@@ -135,6 +135,7 @@ def question_form_context(profile, question, error=None):
 def list_questions():
     profile = ensure_access()
     records = [item for item in QUESTIONS if question_in_scope(profile, item)]
+    scoped_records = list(records)
     query = request.args.get("q", "").strip().lower()
     operation = request.args.get("operacao", "")
     difficulty = request.args.get("dificuldade", "")
@@ -146,6 +147,27 @@ def list_questions():
     if subject_id and subject_id not in allowed_subject_ids:
         abort(403)
     topics = [item for item in TOPICS if item["materia_id"] in allowed_subject_ids]
+    selected_subject_record = find_subject(subject_id) if subject_id else None
+    selected_topic_record = find_topic(topic_id) if topic_id else None
+    if topic_id and (
+        not subject_id
+        or not selected_topic_record
+        or selected_topic_record["materia_id"] != subject_id
+    ):
+        abort(400)
+    selected_topics = [item for item in topics if item["materia_id"] == subject_id]
+    subject_question_counts = {
+        subject["id"]: sum(1 for item in scoped_records if item.get("materia_id") == subject["id"])
+        for subject in subjects
+    }
+    subject_topic_counts = {
+        subject["id"]: sum(1 for item in topics if item["materia_id"] == subject["id"])
+        for subject in subjects
+    }
+    topic_question_counts = {
+        topic["id"]: sum(1 for item in scoped_records if item.get("assunto_id") == topic["id"])
+        for topic in topics
+    }
     if not subject_id or not topic_id:
         records = []
     else:
@@ -176,8 +198,14 @@ def list_questions():
         curriculum_label="Gerir assuntos" if profile["key"] == "teacher" else "Gerir matérias",
         subjects=subjects,
         topics=topics,
+        selected_topics=selected_topics,
         selected_subject=subject_id,
         selected_topic=topic_id,
+        selected_subject_record=selected_subject_record,
+        selected_topic_record=selected_topic_record,
+        subject_question_counts=subject_question_counts,
+        subject_topic_counts=subject_topic_counts,
+        topic_question_counts=topic_question_counts,
         pagination={"page": page, "pages": pages, "total": total},
         query=request.args.get("q", ""),
         selected_operation=operation,

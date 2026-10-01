@@ -378,7 +378,7 @@ def test_question_bank_requires_subject_then_topic(client):
     login_as(client, "institute_coordinator")
     initial = client.get("/questoes")
     selected = client.get("/questoes?materia_id=mat-001&assunto_id=ass-001")
-    assert "Selecione matéria e assunto" in initial.get_data(as_text=True)
+    assert "progressive-explorer" in initial.get_data(as_text=True)
     assert "Qual é o resultado de 27 + 15?" in selected.get_data(as_text=True)
 
 
@@ -1414,3 +1414,108 @@ def test_domain_state_survives_application_restart():
         from app.extensions import db
         db.engine.dispose()
     database_file.unlink(missing_ok=True)
+
+@pytest.mark.parametrize(
+    ("profile", "body_class", "primary_action"),
+    [
+        ("teacher", "role-teacher", "Criar nova questão"),
+        ("school_coordinator", "role-school-coordinator", "Solicitar simulado"),
+        ("institute_coordinator", "role-institute-coordinator", "Abrir relatórios"),
+        ("it_admin", "role-it-admin", "Gerenciar usuários"),
+    ],
+)
+def test_professional_dashboards_use_the_staff_workspace(
+    client, profile, body_class, primary_action
+):
+    login_as(client, profile)
+    response = client.get("/inicio")
+    content = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert f'class="{body_class}"' in content
+    assert "css/staff.css" in content
+    assert "staff-home-hero" in content
+    assert "staff-command-center" in content
+    assert "staff-focus-panel" in content
+    assert primary_action in content
+    assert "student-home-hero" not in content
+
+
+def test_question_bank_uses_progressive_subject_and_topic_carousels(client):
+    login_as(client, "school_coordinator")
+
+    initial = client.get("/questoes").get_data(as_text=True)
+    subject_selected = client.get("/questoes?materia_id=mat-001").get_data(as_text=True)
+    topic_selected = client.get("/questoes?materia_id=mat-001&assunto_id=ass-001").get_data(as_text=True)
+
+    assert "progressive-choice-carousel" in initial
+    assert "progressive-choice-card--subject" in initial
+    assert 'id="materia_id"' not in initial
+    assert "Ver questões" not in initial
+    assert "Agora escolha o assunto" in subject_selected
+    assert "progressive-choice-card--topic" in subject_selected
+    assert "Qual é o resultado de 27 + 15?" not in subject_selected
+    assert "Qual é o resultado de 27 + 15?" in topic_selected
+    assert 'id="questoes"' in topic_selected
+
+
+def test_question_bank_rejects_topic_from_another_subject(client):
+    login_as(client, "school_coordinator")
+    response = client.get("/questoes?materia_id=mat-001&assunto_id=ass-003")
+    assert response.status_code == 400
+
+
+def test_academic_structure_progresses_from_series_to_class_and_students(client):
+    login_as(client, "school_coordinator")
+
+    initial = client.get("/academico/estrutura").get_data(as_text=True)
+    series_selected = client.get("/academico/estrutura?serie_id=ser-003").get_data(as_text=True)
+    class_selected = client.get("/academico/estrutura?serie_id=ser-003&turma_id=tur-001").get_data(as_text=True)
+
+    assert "Da série ao estudante" in initial
+    assert "progressive-choice-card--series" in initial
+    assert "As turmas aparecem aqui" in initial
+    assert "Turma A" in series_selected
+    assert "Turma B" in series_selected
+    assert "Ana Clara Souza" not in series_selected
+    assert "Ana Clara Souza" in class_selected
+    assert "João Pedro Alves" in class_selected
+    assert 'id="alunos"' in class_selected
+
+
+def test_academic_structure_searches_student_without_manual_navigation(client):
+    login_as(client, "school_coordinator")
+    content = client.get("/academico/estrutura?q=Joao").get_data(as_text=True)
+
+    assert "1 aluno encontrado" in content
+    assert "João Pedro Alves" in content
+    assert "9º ano" in content
+    assert "Turma A" in content
+    assert "Abrir turma" in content
+
+
+def test_academic_structure_rejects_class_from_another_series(client):
+    login_as(client, "school_coordinator")
+    response = client.get("/academico/estrutura?serie_id=ser-002&turma_id=tur-001")
+    assert response.status_code == 400
+
+
+def test_school_navigation_consolidates_series_classes_and_students(client):
+    login_as(client, "school_coordinator")
+    content = client.get("/inicio").get_data(as_text=True)
+
+    assert "Séries, turmas e alunos" in content
+    assert 'href="/academico/estrutura"' in content
+    assert 'href="/academico/series"' not in content
+    assert 'href="/academico/turmas"' not in content
+    assert 'href="/academico/alunos"' not in content
+
+
+def test_teacher_structure_respects_assigned_classes(client):
+    login_as(client, "teacher")
+    content = client.get("/academico/estrutura").get_data(as_text=True)
+    search = client.get("/academico/estrutura?q=Sofia").get_data(as_text=True)
+
+    assert "9º ano" in content
+    assert "7º ano" not in content
+    assert "Nenhum aluno encontrado" in search

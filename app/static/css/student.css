@@ -68,6 +68,7 @@
 .student-home-card__copy strong { margin-top: 3px; color: var(--brand-navy-900); font-size: 1.08rem; }
 .student-home-card__copy > span { margin-top: 8px; color: var(--text-muted); font-size: .87rem; line-height: 1.45; }
 .student-home-card > b { color: var(--brand-navy-900); font-size: 1.45rem; }
+.student-home-card--text-value > b { display: none; }
 .student-home-card__cta { z-index: 1; display: flex; grid-column: 1 / -1; align-items: center; align-self: end; gap: 5px; color: var(--brand-orange-700); font-size: .85rem; font-weight: 850; }
 .student-home-card__cta .ui-icon { width: 16px; height: 16px; transition: transform var(--transition-fast); }
 .student-home-card:hover .student-home-card__cta .ui-icon { transform: translateX(4px); }

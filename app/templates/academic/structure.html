@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import empty_state, status_tag %}
+{% macro student_card(student, search_context=false) -%}
+  <article class="academic-student-card">
+    <span class="academic-student-card__avatar" aria-hidden="true">{{ student.nome[:1] }}</span>
+    <div class="academic-student-card__copy"><div><h3><a href="{{ url_for('academic.detail', entity='alunos', item_id=student.id) }}">{{ student.nome }}</a></h3>{{ status_tag(student.status, 'success' if student.status.lower() in ['ativo', 'ativa'] else ('warning' if student.status == 'Pendente' else 'neutral')) }}</div><p>Matrícula <strong>{{ student.matricula }}</strong></p><span>{{ student.serie }} · {{ student.turma }}{% if search_context %} · {{ student.instituicao }}{% endif %}</span></div>
+    <div class="academic-student-card__actions">{% if search_context and student.serie_id and student.turma_id %}<a class="button button--small button--quiet" href="{{ url_for('academic.structure', serie_id=student.serie_id, turma_id=student.turma_id, _anchor='alunos') }}">Abrir turma</a>{% endif %}<a class="button button--small button--secondary" href="{{ url_for('academic.detail', entity='alunos', item_id=student.id) }}">Ver cadastro</a>{% if can_manage_students %}<a class="button button--small button--quiet" href="{{ url_for('academic.edit', entity='alunos', item_id=student.id) }}">Editar</a>{% endif %}</div>
+  </article>
+{%- endmacro %}
+{% block content %}
+  <header class="page-header academic-structure-header">
+    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Estrutura escolar</p><h1>Séries, turmas e alunos</h1><p>Consulte toda a estrutura acadêmica em um único fluxo, da série ao estudante.</p></div>
+    {% if can_manage_series or can_manage_classes or can_manage_students %}<details class="academic-create-menu"><summary class="button button--primary">Adicionar cadastro {{ icon('chevron-right') }}</summary><div>{% if can_manage_series %}<a href="{{ url_for('academic.create', entity='series') }}"><span>{{ icon('layers') }}</span><strong>Nova série</strong><small>Criar uma etapa escolar</small></a>{% endif %}{% if can_manage_classes %}<a href="{{ url_for('academic.create', entity='turmas', serie_id=selected_series_id) }}"><span>{{ icon('class') }}</span><strong>Nova turma</strong><small>{% if selected_series %}Em {{ selected_series.nome }}{% else %}Vincular a uma série{% endif %}</small></a>{% endif %}{% if can_manage_students %}<a href="{{ url_for('academic.create', entity='alunos', turma_id=selected_class_id) }}"><span>{{ icon('person') }}</span><strong>Novo aluno</strong><small>{% if selected_class %}Em {{ selected_class.nome }}{% else %}Vincular a uma turma{% endif %}</small></a>{% endif %}</div></details>{% endif %}
+  </header>
+
+  <section class="academic-student-search" aria-labelledby="student-search-title">
+    <span class="academic-student-search__icon" aria-hidden="true">{{ icon('people') }}</span>
+    <div><span>Busca direta</span><h2 id="student-search-title">Encontre um aluno em toda a estrutura</h2><p>Pesquise pelo nome ou número de matrícula, sem precisar escolher série e turma primeiro.</p></div>
+    <form method="get" action="{{ url_for('academic.structure') }}" role="search"><label class="sr-only" for="student-search">Nome ou matrícula do aluno</label><div><input id="student-search" name="q" value="{{ query }}" placeholder="Digite o nome ou a matrícula" autocomplete="off"><button class="button button--primary" type="submit">Pesquisar</button></div>{% if query %}<a href="{{ url_for('academic.structure') }}">Limpar pesquisa</a>{% endif %}</form>
+  </section>
+
+  {% if query %}<section class="academic-search-results" id="resultados" aria-labelledby="search-results-title">
+    <div class="section-heading"><div><span>Resultado da pesquisa</span><h2 id="search-results-title">{{ search_results|length }} {{ 'aluno encontrado' if search_results|length == 1 else 'alunos encontrados' }}</h2><p>Resultados para <strong>“{{ query }}”</strong> dentro do seu escopo.</p></div></div>
+    {% if search_results %}<div class="academic-student-list">{% for student in search_results %}{{ student_card(student, true) }}{% endfor %}</div>{% else %}{{ empty_state("Nenhum aluno encontrado", "Tente outra grafia ou pesquise pelo número de matrícula.") }}{% endif %}
+  </section>{% endif %}
+
+  <section class="progressive-explorer academic-hierarchy" aria-labelledby="academic-explorer-title">
+    <div class="progressive-explorer__intro">
+      <div><span>Navegar pela escola</span><h2 id="academic-explorer-title">Da série ao estudante</h2><p>Escolha uma série e uma turma. A relação de alunos aparece imediatamente.</p></div>
+      <ol class="progressive-explorer__path progressive-explorer__path--three" aria-label="Progresso da seleção">
+        <li class="{% if selected_series %}is-complete{% else %}is-current{% endif %}"><b>1</b><span><small>Série</small><strong>{{ selected_series.nome if selected_series else 'Escolha uma' }}</strong></span></li>
+        <li class="{% if selected_class %}is-complete{% elif selected_series %}is-current{% endif %}"><b>2</b><span><small>Turma</small><strong>{{ selected_class.nome if selected_class else 'Próxima etapa' }}</strong></span></li>
+        <li class="{% if selected_class %}is-current{% endif %}"><b>3</b><span><small>Alunos</small><strong>{% if selected_class %}{{ selected_students|length }} na turma{% else %}Após a turma{% endif %}</strong></span></li>
+      </ol>
+    </div>
+
+    <div class="progressive-explorer__stage">
+      <header class="progressive-explorer__stage-heading"><span>01</span><div><small>Estrutura acadêmica</small><h3>Escolha a série</h3><p>As contagens consideram apenas os registros que este perfil pode acessar.</p></div></header>
+      {% if series_records %}<div class="progressive-carousel-frame" data-progressive-carousel-group>
+        <button class="progressive-carousel__control progressive-carousel__control--previous" type="button" data-carousel-previous aria-label="Ver séries anteriores">{{ icon('chevron-left') }}</button>
+        <div class="progressive-choice-carousel" data-progressive-carousel tabindex="0" aria-label="Séries disponíveis">
+          {% for series in series_records %}<a class="progressive-choice-card progressive-choice-card--series{% if selected_series_id == series.id %} is-selected{% endif %}" href="{{ url_for('academic.structure', serie_id=series.id, _anchor='turmas') }}"{% if selected_series_id == series.id %} aria-current="true"{% endif %}>
+            <span class="progressive-choice-card__icon" aria-hidden="true">{{ icon('layers') }}</span>
+            <span class="progressive-choice-card__copy"><small>{{ series.instituicao }}</small><strong>{{ series.nome }}</strong><span>{{ series.turno }} · {{ series_class_counts.get(series.id, 0) }} {{ 'turma' if series_class_counts.get(series.id, 0) == 1 else 'turmas' }} · {{ series_student_counts.get(series.id, 0) }} {{ 'aluno' if series_student_counts.get(series.id, 0) == 1 else 'alunos' }}</span></span>
+            <span class="progressive-choice-card__state">{% if selected_series_id == series.id %}Selecionada {{ icon('check') }}{% else %}Escolher {{ icon('chevron-right') }}{% endif %}</span>
+          </a>{% endfor %}
+        </div>
+        <button class="progressive-carousel__control progressive-carousel__control--next" type="button" data-carousel-next aria-label="Ver próximas séries">{{ icon('chevron-right') }}</button>
+      </div>{% else %}{{ empty_state("Nenhuma série disponível", "Cadastre uma série para começar a estruturar as turmas.") }}{% endif %}
+    </div>
+
+    {% if selected_series %}<div class="progressive-explorer__stage progressive-explorer__stage--topics" id="turmas">
+      <header class="progressive-explorer__stage-heading"><span>02</span><div><small>{{ selected_series.nome }} · {{ selected_series.instituicao }}</small><h3>Escolha a turma</h3><p>Os alunos serão listados assim que a turma for selecionada.</p></div></header>
+      {% if selected_classes %}<div class="progressive-carousel-frame" data-progressive-carousel-group>
+        <button class="progressive-carousel__control progressive-carousel__control--previous" type="button" data-carousel-previous aria-label="Ver turmas anteriores">{{ icon('chevron-left') }}</button>
+        <div class="progressive-choice-carousel progressive-choice-carousel--topics" data-progressive-carousel tabindex="0" aria-label="Turmas de {{ selected_series.nome }}">
+          {% for school_class in selected_classes %}<a class="progressive-choice-card progressive-choice-card--class{% if selected_class_id == school_class.id %} is-selected{% endif %}" href="{{ url_for('academic.structure', serie_id=selected_series_id, turma_id=school_class.id, _anchor='alunos') }}"{% if selected_class_id == school_class.id %} aria-current="true"{% endif %}>
+            <span class="progressive-choice-card__index">{{ '%02d'|format(loop.index) }}</span>
+            <span class="progressive-choice-card__copy"><small>{{ school_class.ano_letivo }} · {{ school_class.turno }}</small><strong>{{ school_class.nome }}</strong><span>{{ class_student_counts.get(school_class.id, 0) }} {{ 'aluno matriculado' if class_student_counts.get(school_class.id, 0) == 1 else 'alunos matriculados' }}</span></span>
+            <span class="progressive-choice-card__state">{% if selected_class_id == school_class.id %}Selecionada {{ icon('check') }}{% else %}Escolher {{ icon('chevron-right') }}{% endif %}</span>
+          </a>{% endfor %}
+        </div>
+        <button class="progressive-carousel__control progressive-carousel__control--next" type="button" data-carousel-next aria-label="Ver próximas turmas">{{ icon('chevron-right') }}</button>
+      </div>{% else %}{{ empty_state("Nenhuma turma nesta série", "Adicione uma turma para continuar até os alunos.") }}{% endif %}
+    </div>{% else %}<div class="progressive-explorer__prompt"><span aria-hidden="true">{{ icon('class') }}</span><div><strong>As turmas aparecem aqui</strong><p>Selecione uma série acima para continuar.</p></div></div>{% endif %}
+
+    {% if selected_class %}<div class="academic-roster" id="alunos">
+      <header class="academic-roster__header"><div class="progressive-explorer__stage-heading"><span>03</span><div><small>{{ selected_series.nome }} · {{ selected_class.ano_letivo }}</small><h3>Alunos da {{ selected_class.nome }}</h3><p>{{ selected_students|length }} {{ 'estudante vinculado' if selected_students|length == 1 else 'estudantes vinculados' }} a esta turma.</p></div></div>{% if can_manage_students %}<a class="button button--secondary" href="{{ url_for('academic.create', entity='alunos', turma_id=selected_class.id) }}">Adicionar aluno à turma</a>{% endif %}</header>
+      {% if selected_students %}<div class="academic-student-list">{% for student in selected_students %}{{ student_card(student) }}{% endfor %}</div>{% else %}{{ empty_state("Nenhum aluno nesta turma", "Cadastre ou transfira alunos para preencher esta relação.") }}{% endif %}
+    </div>{% endif %}
+  </section>
+{% endblock %}

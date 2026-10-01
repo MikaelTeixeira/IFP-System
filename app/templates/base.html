@@ -15,11 +15,14 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/curriculum.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/users.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/question-editor.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/progressive-explorer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/academic-structure.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/identity.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/staff.css') }}">
     <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
   </head>
   <body{% if current_profile %} class="role-{{ current_profile.key|replace('_', '-') }}"{% endif %}>

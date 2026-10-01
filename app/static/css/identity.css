@@ -29,7 +29,9 @@ a, button, input, select, textarea, summary { transition: color var(--transition
 .sidebar::-webkit-scrollbar { width: 7px; }
 .sidebar::-webkit-scrollbar-track { background: transparent; }
 .sidebar::-webkit-scrollbar-thumb { background: var(--brand-navy-500); border: 2px solid #fbfaf7; border-radius: 99px; }
-.sidebar__heading { padding: 0 10px 14px; color: var(--brand-navy-900); font-size: .78rem; font-weight: 800; letter-spacing: .045em; text-transform: uppercase; }
+.sidebar__heading { display: grid; gap: 2px; padding: 0 10px 14px; color: var(--brand-navy-900); font-size: .78rem; font-weight: 800; letter-spacing: .045em; text-transform: uppercase; }
+.sidebar__heading span { color: var(--text-muted); font-size: .65rem; letter-spacing: .09em; }
+.sidebar__heading strong { color: var(--brand-navy-900); font-size: .9rem; letter-spacing: 0; text-transform: none; }
 .nav-list { gap: 2px; }
 .nav-group-label { margin: 16px 10px 5px; color: #777e89; font-size: .68rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
 .nav-group-label:first-child { margin-top: 0; }

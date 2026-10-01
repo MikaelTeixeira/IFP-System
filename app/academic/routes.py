@@ -1,4 +1,5 @@
 import math
+import unicodedata
 
 from flask import abort, flash, redirect, render_template, request, url_for
 
@@ -193,6 +194,100 @@ def user_filter_options(profile):
     return municipalities, institutions
 
 
+def navigation_key(entity):
+    return "estrutura" if entity in {"series", "turmas", "alunos"} else entity
+
+
+def normalized_search(value):
+    return "".join(
+        character for character in unicodedata.normalize("NFKD", str(value or ""))
+        if not unicodedata.combining(character)
+    ).lower()
+
+
+@academic_bp.get("/estrutura")
+@login_required
+def structure():
+    profile = ensure_access("series")
+    series_records = [enrich("series", item) for item in scoped_records(profile, "series")]
+    class_records = [enrich("turmas", item) for item in scoped_records(profile, "turmas")]
+    student_records = [enrich("alunos", item) for item in scoped_records(profile, "alunos")]
+
+    series_id = request.args.get("serie_id", "").strip()
+    class_id = request.args.get("turma_id", "").strip()
+    query = request.args.get("q", "").strip()
+
+    series_by_id = {item["id"]: item for item in series_records}
+    classes_by_id = {item["id"]: item for item in class_records}
+    for student in student_records:
+        school_class = classes_by_id.get(student.get("turma_id"), {})
+        grade_series = series_by_id.get(school_class.get("serie_id"), {})
+        student["serie_id"] = grade_series.get("id", "")
+        student["serie"] = grade_series.get("nome", "Não informada")
+    if series_id and series_id not in series_by_id:
+        abort(403)
+    if class_id:
+        selected_class = classes_by_id.get(class_id)
+        if not series_id or not selected_class or selected_class.get("serie_id") != series_id:
+            abort(400)
+
+    selected_series = series_by_id.get(series_id)
+    selected_class = classes_by_id.get(class_id)
+    selected_classes = [item for item in class_records if item.get("serie_id") == series_id]
+    selected_students = sorted(
+        [item for item in student_records if item.get("turma_id") == class_id],
+        key=lambda item: normalized_search(item.get("nome")),
+    )
+
+    series_class_counts = {
+        item["id"]: sum(1 for school_class in class_records if school_class.get("serie_id") == item["id"])
+        for item in series_records
+    }
+    series_student_counts = {
+        item["id"]: sum(
+            1 for student in student_records
+            if classes_by_id.get(student.get("turma_id"), {}).get("serie_id") == item["id"]
+        )
+        for item in series_records
+    }
+    class_student_counts = {
+        item["id"]: sum(1 for student in student_records if student.get("turma_id") == item["id"])
+        for item in class_records
+    }
+
+    search_key = normalized_search(query)
+    search_results = []
+    if search_key:
+        search_results = sorted(
+            [
+                item for item in student_records
+                if search_key in normalized_search(item.get("nome"))
+                or search_key in normalized_search(item.get("matricula"))
+            ],
+            key=lambda item: normalized_search(item.get("nome")),
+        )
+
+    return render_template(
+        "academic/structure.html",
+        page_title="Séries, turmas e alunos",
+        series_records=series_records,
+        selected_series=selected_series,
+        selected_series_id=series_id,
+        selected_classes=selected_classes,
+        selected_class=selected_class,
+        selected_class_id=class_id,
+        selected_students=selected_students,
+        series_class_counts=series_class_counts,
+        series_student_counts=series_student_counts,
+        class_student_counts=class_student_counts,
+        search_results=search_results,
+        query=query,
+        can_manage_series=can_manage(profile, "series"),
+        can_manage_classes=can_manage(profile, "turmas"),
+        can_manage_students=can_manage(profile, "alunos"),
+        active_navigation="estrutura",
+    )
+
 @academic_bp.get("/<entity>")
 @login_required
 def list_entities(entity):
@@ -227,7 +322,7 @@ def list_entities(entity):
         "academic/list.html",
         page_title=config["plural"],
         page_description=f"Consulte e organize {config['plural'].lower()} dentro do seu escopo.",
-        active_navigation=entity,
+        active_navigation=navigation_key(entity),
         entity=entity,
         config=config,
         records=records,
@@ -255,12 +350,20 @@ def create(entity):
         error = identity_error(values) or relationship_error(entity, values)
         if error:
             flash(error, "danger")
-            return render_template("academic/form.html", page_title=f"Novo {config['singular'].lower()}", entity=entity, config=config, record=values, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=entity), 400
+            return render_template("academic/form.html", page_title=f"Novo {config['singular'].lower()}", entity=entity, config=config, record=values, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=navigation_key(entity)), 400
         record = add_record(entity, values)
         flash(f"{config['singular']} salvo no banco de dados.", "success")
         return redirect(url_for("academic.detail", entity=entity, item_id=record["id"]))
-    defaults = {"instituicao_id": profile.get("institution_id", "")} if profile["key"] == "school_coordinator" else {}
-    return render_template("academic/form.html", page_title=f"Novo {config['singular'].lower()}", entity=entity, config=config, record=defaults, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=entity)
+    defaults = {}
+    requested_series = find("series", request.args.get("serie_id", ""))
+    requested_class = find("turmas", request.args.get("turma_id", ""))
+    if requested_class and record_in_scope(profile, "turmas", requested_class["id"]):
+        defaults.update({"turma_id": requested_class["id"], "instituicao_id": requested_class["instituicao_id"]})
+    elif requested_series and record_in_scope(profile, "series", requested_series["id"]):
+        defaults.update({"serie_id": requested_series["id"], "instituicao_id": requested_series["instituicao_id"]})
+    if profile["key"] == "school_coordinator":
+        defaults["instituicao_id"] = profile["institution_id"]
+    return render_template("academic/form.html", page_title=f"Novo {config['singular'].lower()}", entity=entity, config=config, record=defaults, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=navigation_key(entity))
 
 
 @academic_bp.get("/<entity>/<item_id>")
@@ -279,7 +382,7 @@ def detail(entity, item_id):
         ]
     elif entity == "turmas":
         related = [("Alunos", "alunos", [enrich("alunos", item) for item in DATA["alunos"] if item["turma_id"] == item_id])]
-    active_navigation = entity
+    active_navigation = navigation_key(entity)
     if profile["key"] == "student" or (profile["key"] == "teacher" and entity == "professores"):
         active_navigation = "meu-cadastro"
     return render_template("academic/detail.html", page_title=record["nome"], entity=entity, config=config, record=record, related=related, can_manage=can_manage(profile, entity), can_toggle=profile["key"] in {"institute_coordinator", "it_admin"}, can_delete=profile["key"] == "it_admin", can_transfer=entity == "professores" and profile["key"] in {"institute_coordinator", "it_admin"}, transfer_institutions=[enrich("instituicoes", item) for item in DATA["instituicoes"] if item["id"] != record.get("instituicao_id")], active_navigation=active_navigation)
@@ -298,11 +401,11 @@ def edit(entity, item_id):
         error = identity_error(values, exclude_id=item_id) or relationship_error(entity, values)
         if error:
             flash(error, "danger")
-            return render_template("academic/form.html", page_title=f"Editar {config['singular'].lower()}", entity=entity, config=config, record=values, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=entity), 400
+            return render_template("academic/form.html", page_title=f"Editar {config['singular'].lower()}", entity=entity, config=config, record=values, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=navigation_key(entity)), 400
         update_record(entity, item_id, values)
         flash(f"{config['singular']} atualizado no banco de dados.", "success")
         return redirect(url_for("academic.detail", entity=entity, item_id=item_id))
-    return render_template("academic/form.html", page_title=f"Editar {config['singular'].lower()}", entity=entity, config=config, record=record, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=entity)
+    return render_template("academic/form.html", page_title=f"Editar {config['singular'].lower()}", entity=entity, config=config, record=record, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=navigation_key(entity))
 
 
 @academic_bp.post("/professores/<item_id>/transferir")
@@ -338,7 +441,8 @@ def toggle(entity, item_id):
         abort(403)
     record = toggle_record(entity, item_id)
     flash(f"Situação de {record['nome']} alterada para {record['status']}.", "success")
-    return redirect(request.referrer or url_for("academic.list_entities", entity=entity))
+    fallback = url_for("academic.structure") if entity in {"series", "turmas", "alunos"} else url_for("academic.list_entities", entity=entity)
+    return redirect(request.referrer or fallback)
 
 
 @academic_bp.post("/<entity>/<item_id>/excluir")
@@ -355,4 +459,5 @@ def delete(entity, item_id):
         return redirect(url_for("academic.detail", entity=entity, item_id=item_id))
     delete_record(entity, item_id)
     flash(f"{config['singular']} {record['nome']} excluído pelo T.I.", "success")
-    return redirect(url_for("academic.list_entities", entity=entity))
+    destination = url_for("academic.structure") if entity in {"series", "turmas", "alunos"} else url_for("academic.list_entities", entity=entity)
+    return redirect(destination)

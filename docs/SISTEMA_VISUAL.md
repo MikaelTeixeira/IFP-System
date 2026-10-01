@@ -192,3 +192,34 @@ Por isso, a direção foi ajustada para usar listas estruturadas, superfícies m
 quietas e a faixa de contexto acadêmico como elemento visual característico. O
 laranja será reservado a decisões e estados importantes, evitando excesso de
 destaques.
+
+## Experiência dos perfis profissionais
+
+- Professor, coordenações e T.I. usam um espaço de trabalho institucional com
+  navegação escura, hierarquia mais densa e contexto operacional sempre visível.
+- O cabeçalho do painel muda conforme o cargo e apresenta escopo, período letivo,
+  situação do ambiente e uma ação principal ligada à responsabilidade do perfil.
+- Os atalhos são organizados como um centro de trabalho, com descrições objetivas
+  e prioridades próprias para docência, gestão escolar, visão institucional e
+  administração do sistema.
+- Páginas internas de gestão compartilham cabeçalhos, filtros, formulários,
+  tabelas e estados interativos mais sóbrios, sem perder a identidade azul e
+  laranja do Instituto Fabiana Pinto.
+- As variações visuais entre cargos são discretas e usam a mesma base de tokens,
+  mantendo consistência durante trocas de perfil e em telas menores.
+- Movimentos permanecem curtos, funcionais e são desativados quando o sistema
+  informa preferência por movimento reduzido.
+
+## Navegação progressiva no banco de questões
+
+- A entrada do banco utiliza carrosséis de cartões no lugar de menus suspensos.
+- A primeira escolha define a matéria e revela somente os assuntos vinculados a
+  ela; a segunda escolha abre diretamente a relação de questões.
+- Cada cartão informa a quantidade de assuntos ou questões antes da seleção e
+  mantém um estado visual claro para o item ativo.
+- As setas permitem navegar com mouse e teclado, enquanto a faixa horizontal
+  também aceita rolagem por toque em telas menores.
+- Os filtros detalhados permanecem recolhidos até serem solicitados, mantendo as
+  questões como conteúdo principal após a escolha do assunto.
+- Os links preservam o fluxo mesmo sem JavaScript e combinações inválidas de
+  matéria e assunto são rejeitadas pela aplicação.

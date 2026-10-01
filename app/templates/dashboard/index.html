@@ -20,7 +20,7 @@
       {% for label, value, endpoint, parameters in summary %}
         {% set action_icon = 'assessment' if endpoint == 'student_area.assessments' else ('curriculum' if endpoint == 'student_area.review' else 'person') %}
         {% set action_description = 'Consulte datas, orientações e resultados.' if endpoint == 'student_area.assessments' else ('Revise os conteúdos enviados pelos professores.' if endpoint == 'student_area.review' else 'Veja sua turma e suas informações acadêmicas.') %}
-        <a class="student-home-card student-home-card--{{ loop.index }}" href="{{ url_for(endpoint, **parameters) }}">
+        <a class="student-home-card student-home-card--{{ loop.index }}{% if endpoint == 'academic.detail' %} student-home-card--text-value{% endif %}" href="{{ url_for(endpoint, **parameters) }}">
           <span class="student-home-card__icon" aria-hidden="true">{{ icon(action_icon) }}</span>
           <span class="student-home-card__copy"><small>Área do aluno</small><strong>{{ label }}</strong><span>{{ action_description }}</span></span>
           <b>{{ value }}</b>
@@ -31,18 +31,57 @@
   </section>
   <section class="student-study-tip"><span aria-hidden="true">{{ icon('info') }}</span><div><h2>Uma etapa de cada vez</h2><p>Confira os materiais de revisão antes dos simulados e acompanhe suas notificações para não perder novas publicações.</p></div></section>
   {% else %}
-  <header class="welcome-header">
-    <div><p class="breadcrumb">Início</p><h1>{{ page_title }}</h1><p>{{ page_description }}</p></div>
-    <div class="welcome-date"><span>Período atual</span><strong>2026</strong></div>
-  </header>
-  <section class="dashboard-summary" aria-labelledby="summary-title">
-    <div class="section-heading"><div><h2 id="summary-title">Seu espaço de trabalho</h2><p>Acesse as informações disponíveis para o seu perfil.</p></div></div>
-    <div class="summary-list">
-      {% for label, value, endpoint, parameters in summary %}
-        <a class="summary-row" href="{{ url_for(endpoint, **parameters) }}"><span><strong>{{ label }}</strong><small>Abrir área</small></span><b>{{ value }}</b><span aria-hidden="true">{{ icon('chevron-right') }}</span></a>
-      {% endfor %}
-    </div>
-  </section>
-  <section class="guidance-panel"><div class="guidance-panel__mark" aria-hidden="true">{{ icon('info') }}</div><div><h2>Ambiente de demonstração</h2><p>Cadastros administrativos, tentativas, respostas, arquivos, revisões e notificações usam o banco local. Parte do conteúdo acadêmico ainda é restaurada quando o servidor reinicia.</p></div></section>
+    {% if current_profile.key == 'teacher' %}
+      {% set role_icon = 'questions' %}{% set role_eyebrow = 'Sala dos professores' %}{% set role_title = 'Organize o trabalho docente com clareza' %}{% set role_intro = 'Acompanhe solicitações, correções e conteúdos das suas turmas em um único espaço.' %}{% set primary_label = 'Criar nova questão' %}{% set primary_endpoint = 'questions.create' %}{% set scope_label = 'Minhas turmas' %}
+    {% elif current_profile.key == 'school_coordinator' %}
+      {% set role_icon = 'school' %}{% set role_eyebrow = 'Gestão da escola' %}{% set role_title = 'Decisões pedagógicas em uma visão única' %}{% set role_intro = 'Acompanhe a comunidade escolar, o desempenho e o fluxo de avaliações da sua instituição.' %}{% set primary_label = 'Solicitar simulado' %}{% set primary_endpoint = 'assessments.request_assessment' %}{% set scope_label = 'Escola Horizonte' %}
+    {% elif current_profile.key == 'institute_coordinator' %}
+      {% set role_icon = 'chart' %}{% set role_eyebrow = 'Coordenação institucional' %}{% set role_title = 'Uma leitura estratégica de toda a rede' %}{% set role_intro = 'Compare escolas, acompanhe avaliações e conduza as ações pedagógicas do instituto.' %}{% set primary_label = 'Abrir relatórios' %}{% set primary_endpoint = 'reports.index' %}{% set scope_label = 'Todas as escolas' %}
+    {% else %}
+      {% set role_icon = 'layers' %}{% set role_eyebrow = 'Administração do sistema' %}{% set role_title = 'Controle operacional com visão completa' %}{% set role_intro = 'Gerencie acessos, cadastros e conteúdos mantendo os vínculos do sistema organizados.' %}{% set primary_label = 'Gerenciar usuários' %}{% set primary_endpoint = 'users.index' %}{% set scope_label = 'Acesso ampliado' %}
+    {% endif %}
+    <header class="staff-home-hero staff-home-hero--{{ current_profile.key|replace('_', '-') }}">
+      <div class="staff-home-hero__copy">
+        <p class="staff-home-hero__eyebrow"><span aria-hidden="true"></span>{{ role_eyebrow }}</p>
+        <h1>{{ page_title }}</h1>
+        <h2>{{ role_title }}</h2>
+        <p>{{ role_intro }}</p>
+        <div class="staff-home-hero__actions"><a class="button staff-primary-action" href="{{ url_for(primary_endpoint) }}">{{ primary_label }} {{ icon('chevron-right') }}</a><a href="{{ url_for('core.notifications') }}">Ver notificações</a></div>
+      </div>
+      <aside class="staff-home-hero__brief" aria-label="Contexto do painel">
+        <div class="staff-home-hero__role"><span aria-hidden="true">{{ icon(role_icon) }}</span><div><small>Perfil ativo</small><strong>{{ current_profile.label }}</strong></div></div>
+        <dl><div><dt>Período letivo</dt><dd>2026</dd></div><div><dt>Escopo</dt><dd>{{ scope_label }}</dd></div><div><dt>Situação</dt><dd><span class="staff-live-dot" aria-hidden="true"></span>Operacional</dd></div></dl>
+      </aside>
+    </header>
+    <section class="staff-command-center" aria-labelledby="summary-title">
+      <div class="staff-section-heading"><div><p>Visão operacional</p><h2 id="summary-title">Central de trabalho</h2><span>Indicadores e atalhos adequados às responsabilidades do seu perfil.</span></div><strong>{{ summary|length }} áreas principais</strong></div>
+      <div class="staff-command-grid staff-command-grid--{{ summary|length }}">
+        {% for label, value, endpoint, parameters in summary %}
+          {% if endpoint == 'reports.index' %}{% set card_icon = 'chart' %}{% set card_description = 'Indicadores, evolução e recortes de desempenho.' %}
+          {% elif endpoint == 'academic.structure' %}{% set card_icon = 'class' %}{% set card_description = 'Navegue por séries, turmas e alunos em uma única área.' %}
+          {% elif parameters.get('entity') == 'turmas' %}{% set card_icon = 'class' %}{% set card_description = 'Acompanhe os grupos e vínculos sob sua responsabilidade.' %}
+          {% elif parameters.get('entity') == 'alunos' or endpoint == 'users.index' %}{% set card_icon = 'people' %}{% set card_description = 'Consulte e organize os perfis vinculados.' %}
+          {% elif parameters.get('entity') == 'instituicoes' %}{% set card_icon = 'school' %}{% set card_description = 'Acompanhe a estrutura das unidades de ensino.' %}
+          {% elif endpoint == 'materials.index' %}{% set card_icon = 'curriculum' %}{% set card_description = 'Organize conteúdos de apoio para o estudo.' %}
+          {% elif endpoint in ['assessments.list_assessments', 'assessments.teacher_requests'] %}{% set card_icon = 'assessment' %}{% set card_description = 'Acompanhe solicitações, agenda e publicação.' %}
+          {% else %}{% set card_icon = 'questions' %}{% set card_description = 'Consulte, produza e acompanhe as questões.' %}{% endif %}
+          <a class="staff-command-card{% if loop.first %} is-featured{% endif %}" href="{{ url_for(endpoint, **parameters) }}" style="--card-order: {{ loop.index0 }}">
+            <span class="staff-command-card__icon" aria-hidden="true">{{ icon(card_icon) }}</span>
+            <span class="staff-command-card__index">{{ '%02d'|format(loop.index) }}</span>
+            <span class="staff-command-card__copy"><strong>{{ label }}</strong><small>{{ card_description }}</small></span>
+            <span class="staff-command-card__footer"><b>{{ value }}</b><span>Abrir área {{ icon('chevron-right') }}</span></span>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="staff-focus-panel" aria-labelledby="focus-title">
+      <div class="staff-focus-panel__heading"><span aria-hidden="true">{{ icon('info') }}</span><div><p>Orientação do perfil</p><h2 id="focus-title">Prioridades para manter o trabalho em dia</h2></div></div>
+      <div class="staff-focus-list">
+        {% if current_profile.key == 'teacher' %}<div><b>01</b><span><strong>Atenda às solicitações</strong><small>Selecione e envie a quantidade exata de questões pedida.</small></span></div><div><b>02</b><span><strong>Revise as pendências</strong><small>Acompanhe os retornos da coordenação e reenvie os ajustes.</small></span></div><div><b>03</b><span><strong>Prepare as turmas</strong><small>Publique materiais organizados por matéria e assunto.</small></span></div>
+        {% elif current_profile.key == 'school_coordinator' %}<div><b>01</b><span><strong>Acompanhe a escola</strong><small>Use os indicadores para identificar séries e turmas prioritárias.</small></span></div><div><b>02</b><span><strong>Organize as avaliações</strong><small>Defina anos, matérias, professores e prazos com antecedência.</small></span></div><div><b>03</b><span><strong>Conclua as revisões</strong><small>Aprove todas as questões antes de agendar o simulado.</small></span></div>
+        {% elif current_profile.key == 'institute_coordinator' %}<div><b>01</b><span><strong>Compare as escolas</strong><small>Observe médias, frequência e evolução de cada unidade.</small></span></div><div><b>02</b><span><strong>Padronize o currículo</strong><small>Mantenha matérias globais e assuntos bem organizados.</small></span></div><div><b>03</b><span><strong>Acompanhe avaliações</strong><small>Supervisione solicitações e publicações em toda a rede.</small></span></div>
+        {% else %}<div><b>01</b><span><strong>Mantenha os acessos</strong><small>Revise perfis, instituições e situações dos usuários.</small></span></div><div><b>02</b><span><strong>Preserve os vínculos</strong><small>Resolva dependências antes de excluir cadastros relacionados.</small></span></div><div><b>03</b><span><strong>Apoie a operação</strong><small>Use a visão ampliada para corrigir conteúdos e cadastros.</small></span></div>{% endif %}
+      </div>
+    </section>
   {% endif %}
 {% endblock %}

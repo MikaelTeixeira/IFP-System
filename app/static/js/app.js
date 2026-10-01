@@ -618,3 +618,54 @@ function renderReportChart(chart) {
 }
 
 document.querySelectorAll("[data-report-chart]").forEach(renderReportChart);
+
+const progressiveCarouselGroups = document.querySelectorAll("[data-progressive-carousel-group]");
+
+progressiveCarouselGroups.forEach((group) => {
+  const carousel = group.querySelector("[data-progressive-carousel]");
+  const previous = group.querySelector("[data-carousel-previous]");
+  const next = group.querySelector("[data-carousel-next]");
+  if (!carousel || !previous || !next) return;
+
+  const updateControls = () => {
+    const maximum = Math.max(0, carousel.scrollWidth - carousel.clientWidth);
+    previous.disabled = carousel.scrollLeft <= 2;
+    next.disabled = carousel.scrollLeft >= maximum - 2;
+  };
+
+  const moveCarousel = (direction) => {
+    const distance = Math.max(230, carousel.clientWidth * 0.78);
+    carousel.scrollBy({ left: direction * distance, behavior: "smooth" });
+  };
+
+  previous.addEventListener("click", () => moveCarousel(-1));
+  next.addEventListener("click", () => moveCarousel(1));
+  carousel.addEventListener("scroll", () => window.requestAnimationFrame(updateControls), { passive: true });
+  carousel.addEventListener("keydown", (event) => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    const cards = Array.from(carousel.querySelectorAll(".progressive-choice-card"));
+    const focusedIndex = cards.indexOf(document.activeElement);
+    const direction = event.key === 'ArrowRight' ? 1 : -1;
+    const nextIndex = Math.min(cards.length - 1, Math.max(0, (focusedIndex < 0 ? 0 : focusedIndex) + direction));
+    if (!cards[nextIndex]) return;
+    event.preventDefault();
+    cards[nextIndex].focus();
+    cards[nextIndex].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  });
+
+  const selectedCard = carousel.querySelector(".progressive-choice-card.is-selected");
+  if (selectedCard) {
+    window.requestAnimationFrame(() => {
+      carousel.scrollLeft = Math.max(0, selectedCard.offsetLeft - (carousel.clientWidth - selectedCard.clientWidth) / 2);
+      updateControls();
+    });
+  } else {
+    updateControls();
+  }
+
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(updateControls).observe(carousel);
+  } else {
+    window.addEventListener("resize", updateControls);
+  }
+});

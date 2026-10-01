@@ -726,3 +726,32 @@ administrativa do MySQL instalado na máquina.
   próprio registro como duplicado.
 - A suíte completa terminou com **75 testes aprovados**, incluindo os novos
   fluxos administrativos e os bloqueios de integridade.
+
+# 1º de outubro de 2026 - Identidade dos perfis profissionais
+
+- Professor, coordenadores e T.I. receberam um painel inicial mais sofisticado,
+  com linguagem visual institucional e conteúdo adaptado à responsabilidade de
+  cada cargo.
+- A navegação lateral profissional ganhou contraste, identificação clara do
+  espaço de trabalho e indicação do escopo atual.
+- O início agora combina ação principal, contexto operacional, atalhos de gestão
+  e prioridades, evitando um painel genérico compartilhado entre todos os cargos.
+- Cabeçalhos, filtros, formulários, tabelas e painéis das páginas administrativas
+  passaram a herdar o mesmo acabamento visual.
+- A experiência do Aluno foi preservada com linguagem direta, controles maiores
+  e menor densidade de informação.
+- A identidade profissional foi protegida por testes para os quatro perfis e a
+  suíte completa terminou com **79 testes aprovados**.
+
+# 1º de outubro de 2026 - Exploração fluida do banco de questões
+
+- Os campos de matéria e assunto foram substituídos por carrosséis de cartões
+  com contagens, seleção destacada e controles de rolagem.
+- A navegação passou a ser progressiva: matéria revela assuntos e assunto abre
+  imediatamente as questões, sem o botão intermediário **Ver questões**.
+- Os filtros complementares ficaram recolhidos para reduzir o ruído visual da
+  consulta principal.
+- A rota agora valida a relação entre matéria e assunto e fornece as contagens
+  do acervo respeitando o escopo do perfil conectado.
+- A interação foi validada na visão da coordenação escolar e a suíte completa
+  terminou com **81 testes aprovados**.

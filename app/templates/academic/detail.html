@@ -4,8 +4,9 @@
   {% if record.instituicao or entity == 'instituicoes' %}{% set context_items = [record.instituicao or record.nome, config.singular] %}{% include "partials/context_bar.html" %}{% endif %}
 {% endblock %}
 {% block content %}
+  {% set collection_url = url_for('academic.structure') if entity in ['series', 'turmas', 'alunos'] and current_profile.key != 'student' else url_for('academic.list_entities', entity=entity) %}
   <header class="page-header">
-    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> {% if current_profile.key != 'student' %}<a href="{{ url_for('academic.list_entities', entity=entity) }}">{{ config.plural }}</a> <span aria-hidden="true">/</span>{% endif %} Detalhes</p><div class="title-with-status"><h1>{{ record.nome }}</h1>{{ status_tag(record.status, 'warning' if record.status == 'Pendente' else ('success' if record.status.lower() in ['ativo', 'ativa'] else 'neutral')) }}</div><p>Informações acadêmicas disponíveis para o perfil atual.</p></div>
+    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> {% if current_profile.key != 'student' %}<a href="{{ collection_url }}">{{ config.plural }}</a> <span aria-hidden="true">/</span>{% endif %} Detalhes</p><div class="title-with-status"><h1>{{ record.nome }}</h1>{{ status_tag(record.status, 'warning' if record.status == 'Pendente' else ('success' if record.status.lower() in ['ativo', 'ativa'] else 'neutral')) }}</div><p>Informações acadêmicas disponíveis para o perfil atual.</p></div>
     {% if can_manage %}<a class="button button--primary" href="{{ url_for('academic.edit', entity=entity, item_id=record.id) }}">Editar {{ config.singular|lower }}</a>{% endif %}
   </header>
   <section class="detail-grid" aria-label="Dados de {{ record.nome }}">

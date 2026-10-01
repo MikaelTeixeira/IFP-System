@@ -38,7 +38,10 @@ def dashboard():
     elif role == "school_coordinator":
         institution_id = profile["institution_id"]
         school_requests = [item for item in ASSESSMENT_REQUESTS if item["instituicao_id"] == institution_id]
-        summary = [("Desempenho da escola", "Relatório", "reports.index", {}), ("Turmas", str(len([item for item in DATA["turmas"] if item["instituicao_id"] == institution_id])), "academic.list_entities", {"entity": "turmas"}), ("Alunos", str(len([item for item in DATA["alunos"] if item["instituicao_id"] == institution_id])), "academic.list_entities", {"entity": "alunos"}), ("Solicitar simulado", str(len(school_requests)), "assessments.list_assessments", {})]
+        series_count = len([item for item in DATA["series"] if item["instituicao_id"] == institution_id])
+        class_count = len([item for item in DATA["turmas"] if item["instituicao_id"] == institution_id])
+        student_count = len([item for item in DATA["alunos"] if item["instituicao_id"] == institution_id])
+        summary = [("Desempenho da escola", "Relatório", "reports.index", {}), ("Séries, turmas e alunos", f"{series_count} · {class_count} · {student_count}", "academic.structure", {}), ("Solicitar simulado", str(len(school_requests)), "assessments.list_assessments", {})]
     elif role == "institute_coordinator":
         summary = [("Relatório das escolas", str(len(DATA["instituicoes"])), "reports.index", {}), ("Instituições", str(len(DATA["instituicoes"])), "academic.list_entities", {"entity": "instituicoes"}), ("Banco de questões", str(len(QUESTIONS)), "questions.list_questions", {}), ("Simulados", str(len(ASSESSMENTS)), "assessments.list_assessments", {})]
     else:

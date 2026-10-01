@@ -1,0 +1,151 @@
+/* Experiência institucional para Professor, Coordenações e T.I. */
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) {
+  --role-accent: var(--brand-orange-500);
+  --role-accent-dark: var(--brand-orange-700);
+  --role-accent-soft: var(--brand-orange-100);
+  --role-hero: #1d2942;
+}
+.role-school-coordinator { --role-accent: #cf7a3a; --role-accent-dark: #914713; --role-hero: #243653; }
+.role-institute-coordinator { --role-accent: #d38a50; --role-accent-dark: #914713; --role-hero: #172238; }
+.role-it-admin { --role-accent: #8ea1c2; --role-accent-dark: #526484; --role-accent-soft: #e9edf4; --role-hero: #182132; }
+
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .main-content {
+  background-color: #f3f2ee;
+  background-image: linear-gradient(rgb(45 61 95 / 2.5%) 1px, transparent 1px), linear-gradient(90deg, rgb(45 61 95 / 2.5%) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .page-container { width: min(1280px, calc(100% - 64px)); }
+
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .topbar { border-bottom: 3px solid var(--role-accent); }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .sidebar { color: white; background: #202d47; border-right: 0; box-shadow: 8px 0 26px rgb(19 30 51 / 8%); }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .sidebar__heading { display: grid; gap: 2px; padding: 2px 10px 18px; color: white; text-transform: none; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .sidebar__heading span { color: #99a7bf; font-size: .63rem; letter-spacing: .11em; text-transform: uppercase; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .sidebar__heading strong { font-size: .9rem; letter-spacing: 0; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .nav-group-label { color: #8998b2; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .nav-link { color: #d7deea; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .nav-link:hover { color: white; background: rgb(255 255 255 / 7%); }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .nav-link.is-active { color: white; background: rgb(255 255 255 / 11%); box-shadow: inset 3px 0 var(--role-accent); }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .nav-link.is-active .nav-link__icon { color: #ffd7b8; }
+.role-it-admin .nav-link.is-active .nav-link__icon { color: #becae0; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .sidebar__note { padding: 15px; color: white; background: rgb(255 255 255 / 6%); border: 1px solid rgb(255 255 255 / 9%); border-radius: 10px; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .sidebar__note::before { width: 28px; height: 2px; margin-bottom: 5px; background: var(--role-accent); content: ""; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .sidebar__note span { color: #aeb9cc; }
+
+.staff-home-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .6fr); min-height: 330px; overflow: hidden; margin-bottom: 38px; color: white; background: var(--role-hero); border: 1px solid rgb(255 255 255 / 8%); border-radius: 18px; box-shadow: 0 24px 54px rgb(29 41 66 / 18%); }
+.staff-home-hero::before { position: absolute; inset: 0; background-image: linear-gradient(rgb(255 255 255 / 3%) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 3%) 1px, transparent 1px); background-size: 42px 42px; content: ""; mask-image: linear-gradient(to right, black, transparent 72%); }
+.staff-home-hero::after { position: absolute; top: 0; left: 0; width: 7px; height: 100%; background: var(--role-accent); content: ""; }
+.staff-home-hero__copy { position: relative; z-index: 1; align-self: center; padding: clamp(34px, 5vw, 58px); }
+.staff-home-hero__eyebrow { display: flex; align-items: center; gap: 9px; margin-bottom: 18px; color: #d9e0eb; font-size: .7rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.staff-home-hero__eyebrow span { width: 28px; height: 2px; background: var(--role-accent); }
+.staff-home-hero h1 { margin-bottom: 7px; color: white; font-size: clamp(2.15rem, 4vw, 3.45rem); line-height: 1; }
+.staff-home-hero h2 { max-width: 680px; margin-bottom: 14px; color: #f5cfb1; font-size: clamp(1.05rem, 2vw, 1.35rem); font-weight: 650; }
+.role-it-admin .staff-home-hero h2 { color: #c4cee0; }
+.staff-home-hero__copy > p:last-of-type { max-width: 62ch; margin-bottom: 27px; color: rgb(255 255 255 / 70%); line-height: 1.6; }
+.staff-home-hero__actions { display: flex; align-items: center; gap: 20px; }
+.staff-home-hero__actions > a:not(.button) { color: #dbe2ed; font-size: .88rem; font-weight: 750; text-decoration-color: rgb(255 255 255 / 32%); text-underline-offset: 4px; }
+.staff-home-hero__actions > a:not(.button):hover { color: white; }
+.staff-primary-action { gap: 8px; min-height: 48px; padding-inline: 19px; color: white; background: var(--role-accent-dark); border-color: rgb(255 255 255 / 10%); box-shadow: 0 10px 22px rgb(10 17 30 / 22%); }
+.staff-primary-action:hover { color: white; background: var(--brand-orange-700); transform: translateY(-2px); }
+.role-it-admin .staff-primary-action { background: #526484; }
+.role-it-admin .staff-primary-action:hover { background: #647798; }
+.staff-primary-action .ui-icon { width: 16px; height: 16px; transition: transform var(--transition-fast); }
+.staff-primary-action:hover .ui-icon { transform: translateX(3px); }
+.staff-home-hero__brief { position: relative; z-index: 1; display: grid; align-content: center; margin: 24px; padding: 24px; background: rgb(255 255 255 / 7%); border: 1px solid rgb(255 255 255 / 12%); border-radius: 13px; backdrop-filter: blur(8px); }
+.staff-home-hero__role { display: flex; align-items: center; gap: 13px; padding-bottom: 19px; border-bottom: 1px solid rgb(255 255 255 / 12%); }
+.staff-home-hero__role > span { display: grid; flex: 0 0 46px; width: 46px; height: 46px; place-items: center; color: var(--role-hero); background: #fff7f0; border-radius: 10px; }
+.role-it-admin .staff-home-hero__role > span { background: #dfe5ef; }
+.staff-home-hero__role .ui-icon { width: 23px; height: 23px; }
+.staff-home-hero__role div { display: grid; }
+.staff-home-hero__role small { color: rgb(255 255 255 / 56%); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; }
+.staff-home-hero__role strong { color: white; font-size: .96rem; }
+.staff-home-hero__brief dl { display: grid; gap: 0; margin: 10px 0 0; }
+.staff-home-hero__brief dl > div { display: flex; justify-content: space-between; gap: 20px; padding: 12px 0; }
+.staff-home-hero__brief dl > div + div { border-top: 1px solid rgb(255 255 255 / 8%); }
+.staff-home-hero__brief dt { color: rgb(255 255 255 / 55%); font-size: .76rem; }
+.staff-home-hero__brief dd { display: flex; align-items: center; gap: 7px; margin: 0; color: white; font-size: .8rem; font-weight: 750; text-align: right; }
+.staff-live-dot { width: 7px; height: 7px; background: #7dd3a7; border-radius: 50%; box-shadow: 0 0 0 4px rgb(125 211 167 / 12%); }
+
+.staff-command-center { margin-bottom: 34px; }
+.staff-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+.staff-section-heading p, .staff-focus-panel__heading p { margin: 0 0 3px; color: var(--role-accent-dark); font-size: .68rem; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+.staff-section-heading h2 { margin-bottom: 4px; font-size: 1.55rem; }
+.staff-section-heading span { color: var(--text-muted); font-size: .9rem; }
+.staff-section-heading > strong { padding: 7px 10px; color: var(--brand-navy-700); background: #e5e8ed; border-radius: 6px; font-size: .75rem; }
+.staff-command-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.staff-command-grid--5 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.staff-command-grid--5 .staff-command-card { grid-column: span 2; }
+.staff-command-grid--5 .staff-command-card:first-child, .staff-command-grid--5 .staff-command-card:nth-child(2) { grid-column: span 3; }
+.staff-command-card { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 16px; min-height: 205px; overflow: hidden; padding: 22px; color: var(--text-primary); text-decoration: none; background: #fffefa; border: 1px solid #d7d8d5; border-radius: 12px; box-shadow: 0 5px 16px rgb(29 41 66 / 4%); animation: staff-rise 420ms both; animation-delay: calc(var(--card-order) * 55ms); }
+.staff-command-card::before { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--role-accent); content: ""; opacity: .42; transition: opacity var(--transition-fast); }
+.staff-command-card:hover { color: var(--text-primary); border-color: #bfc4cc; box-shadow: 0 16px 34px rgb(29 41 66 / 11%); transform: translateY(-4px); }
+.staff-command-card:hover::before, .staff-command-card.is-featured::before { opacity: 1; }
+.staff-command-card__icon { display: grid; width: 44px; height: 44px; place-items: center; color: white; background: var(--brand-navy-700); border-radius: 9px; }
+.staff-command-card.is-featured .staff-command-card__icon { background: var(--role-accent-dark); }
+.role-it-admin .staff-command-card.is-featured .staff-command-card__icon { background: #526484; }
+.staff-command-card__icon .ui-icon { width: 21px; height: 21px; }
+.staff-command-card__index { align-self: start; justify-self: end; color: #a4a8ae; font-family: ui-monospace, "Cascadia Code", monospace; font-size: .72rem; }
+.staff-command-card__copy { display: grid; grid-column: 1 / -1; align-content: start; }
+.staff-command-card__copy strong { margin-bottom: 7px; color: var(--brand-navy-900); font-size: 1.04rem; }
+.staff-command-card__copy small { color: var(--text-muted); font-size: .82rem; line-height: 1.48; }
+.staff-command-card__footer { display: flex; grid-column: 1 / -1; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 15px; border-top: 1px solid #e5e4df; }
+.staff-command-card__footer > b { color: var(--brand-navy-900); font-size: 1.65rem; line-height: 1; }
+.staff-command-card__footer > span { display: flex; align-items: center; gap: 4px; color: var(--role-accent-dark); font-size: .77rem; font-weight: 800; }
+.staff-command-card__footer .ui-icon { width: 14px; height: 14px; transition: transform var(--transition-fast); }
+.staff-command-card:hover .staff-command-card__footer .ui-icon { transform: translateX(3px); }
+
+.staff-focus-panel { display: grid; grid-template-columns: minmax(250px, .72fr) minmax(0, 1.6fr); overflow: hidden; margin-top: 32px; background: #fffefa; border: 1px solid #d7d8d5; border-radius: 13px; }
+.staff-focus-panel__heading { display: flex; align-items: flex-start; gap: 14px; padding: 25px; color: white; background: var(--brand-navy-900); }
+.staff-focus-panel__heading > span { display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; color: var(--brand-navy-900); background: #fff2e8; border-radius: 8px; }
+.role-it-admin .staff-focus-panel__heading > span { background: #dfe5ef; }
+.staff-focus-panel__heading .ui-icon { width: 19px; height: 19px; }
+.staff-focus-panel__heading p { color: #efb98f; }
+.role-it-admin .staff-focus-panel__heading p { color: #aab8cf; }
+.staff-focus-panel__heading h2 { margin: 0; color: white; font-size: 1.05rem; line-height: 1.35; }
+.staff-focus-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.staff-focus-list > div { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 23px 20px; }
+.staff-focus-list > div + div { border-left: 1px solid var(--border-default); }
+.staff-focus-list b { color: var(--role-accent-dark); font-family: ui-monospace, "Cascadia Code", monospace; font-size: .72rem; }
+.staff-focus-list span { display: grid; align-content: start; }
+.staff-focus-list strong { margin-bottom: 5px; color: var(--brand-navy-900); font-size: .88rem; }
+.staff-focus-list small { color: var(--text-muted); font-size: .78rem; line-height: 1.45; }
+
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .page-header:not(.student-page-header) { overflow: hidden; padding: 25px 27px; background: linear-gradient(112deg, #fffefa 0%, #f7f5ef 100%); border: 1px solid #d7d8d5; border-radius: 13px; box-shadow: 0 8px 24px rgb(29 41 66 / 5%); }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .page-header::after { top: 0; bottom: auto; width: 100%; height: 3px; background: linear-gradient(90deg, var(--role-accent), transparent 58%); }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .filter-bar { border: 1px solid #d8d8d4; box-shadow: 0 6px 18px rgb(29 41 66 / 4%); }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) :is(.data-panel, .edit-form, .form-section, .question-bank, .question-sheet, .catalog-card, .material-subject, .correction-carousel-section) { box-shadow: 0 7px 22px rgb(29 41 66 / 5%); }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) th { background: #e9ebee; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) tbody tr:hover { background: #f7f1eb; }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .form-section__heading { border-left: 4px solid var(--role-accent); }
+body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .management-panel { background: #e8ecf2; border-color: #c5ccd8; }
+
+@keyframes staff-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 1180px) {
+  .staff-command-grid, .staff-command-grid--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .staff-command-grid--5 .staff-command-card, .staff-command-grid--5 .staff-command-card:first-child, .staff-command-grid--5 .staff-command-card:nth-child(2) { grid-column: auto; }
+  .staff-command-grid--5 .staff-command-card:last-child { grid-column: 1 / -1; }
+  .staff-focus-panel { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .staff-home-hero { grid-template-columns: 1fr; }
+  .staff-home-hero__brief { margin-top: 0; }
+}
+@media (max-width: 767px) {
+  body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .page-container { width: min(100% - 28px, 1280px); }
+  .staff-home-hero { min-height: 0; border-radius: 14px; }
+  .staff-home-hero__copy { padding: 30px 23px; }
+  .staff-home-hero h1 { font-size: 2.15rem; }
+  .staff-home-hero__actions { align-items: stretch; flex-direction: column; gap: 14px; }
+  .staff-primary-action { width: 100%; }
+  .staff-home-hero__brief { margin: 0 14px 14px; padding: 19px; }
+  .staff-section-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .staff-command-grid, .staff-command-grid--5 { grid-template-columns: 1fr; }
+  .staff-command-grid--5 .staff-command-card:last-child { grid-column: auto; }
+  .staff-command-card { min-height: 185px; }
+  .staff-focus-list { grid-template-columns: 1fr; }
+  .staff-focus-list > div + div { border-top: 1px solid var(--border-default); border-left: 0; }
+  body:is(.role-teacher, .role-school-coordinator, .role-institute-coordinator, .role-it-admin) .page-header:not(.student-page-header) { padding: 21px 19px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .staff-command-card { animation: none; }
+}

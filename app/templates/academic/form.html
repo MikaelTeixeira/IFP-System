@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> <a href="{{ url_for('academic.list_entities', entity=entity) }}">{{ config.plural }}</a> <span aria-hidden="true">/</span> {{ page_title }}</p><h1>{{ page_title }}</h1><p>Preencha as informações para simular esta alteração.</p></div></header>
+  {% set collection_url = url_for('academic.structure') if entity in ['series', 'turmas', 'alunos'] else url_for('academic.list_entities', entity=entity) %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> <a href="{{ collection_url }}">{{ config.plural }}</a> <span aria-hidden="true">/</span> {{ page_title }}</p><h1>{{ page_title }}</h1><p>Preencha as informações para simular esta alteração.</p></div></header>
   <form class="edit-form" method="post">
     <div class="edit-form__fields">
       {% for field in config.fields %}<div class="field"><label for="{{ field }}">{{ field_labels.get(field, field|replace('_', ' ')|capitalize) }}{% if field == 'codigo' and entity == 'municipios' %} <span>(identificador oficial, como o código IBGE)</span>{% elif field == 'codigo' and entity == 'instituicoes' %} <span>(identificador interno da instituição)</span>{% elif field_help.get(field) %} <span>({{ field_help.get(field) }})</span>{% endif %}</label>
@@ -10,6 +11,6 @@
         {% else %}<input id="{{ field }}" name="{{ field }}"{% if field == 'email' %} type="email"{% endif %} value="{{ record.get(field, '') }}" placeholder="Informe {{ field_labels.get(field, field)|lower }}">{% endif %}
       </div>{% endfor %}
     </div>
-    <div class="form-actions"><a class="button button--secondary" href="{{ url_for('academic.list_entities', entity=entity) }}">Cancelar</a><button class="button button--primary" type="submit">Salvar {{ config.singular|lower }}</button></div>
+    <div class="form-actions"><a class="button button--secondary" href="{{ collection_url }}">Cancelar</a><button class="button button--primary" type="submit">Salvar {{ config.singular|lower }}</button></div>
   </form>
 {% endblock %}

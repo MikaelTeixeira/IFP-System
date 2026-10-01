@@ -1,6 +1,6 @@
 {% from "macros/icons.html" import icon %}
 <aside class="sidebar" id="main-navigation" data-sidebar aria-label="Navegação principal">
-  <div class="sidebar__heading">Menu do perfil</div>
+  <div class="sidebar__heading"><span>Espaço de trabalho</span><strong>{{ current_profile.label }}</strong></div>
   <nav>
     <ul class="nav-list">
       {% set group_state = namespace(current='') %}
@@ -18,6 +18,12 @@
       {% endfor %}
     </ul>
   </nav>
-  <div class="sidebar__note"><strong>Ambiente demonstrativo</strong><span>Dados restaurados ao reiniciar</span></div>
+  <div class="sidebar__note">
+    {% if current_profile.key == 'student' %}<strong>Área do aluno</strong><span>Estudos, simulados e materiais</span>
+    {% elif current_profile.key == 'teacher' %}<strong>Área docente</strong><span>Conteúdos, turmas e correções</span>
+    {% elif current_profile.key == 'school_coordinator' %}<strong>Gestão escolar</strong><span>Equipe, avaliações e desempenho</span>
+    {% elif current_profile.key == 'institute_coordinator' %}<strong>Visão institucional</strong><span>Acompanhamento de toda a rede</span>
+    {% else %}<strong>Administração do sistema</strong><span>Cadastros e integridade dos dados</span>{% endif %}
+  </div>
 </aside>
 <button class="sidebar-backdrop" type="button" data-menu-close aria-label="Fechar menu"></button>

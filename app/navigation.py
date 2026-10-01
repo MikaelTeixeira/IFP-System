@@ -22,8 +22,7 @@ def build_navigation(profile):
             {"key": "materiais", "label": "Materiais de revisão", "url": url_for("materials.index"), "icon": "curriculum", "group": "Trabalho docente"},
             {"key": "curriculo", "label": "Meus assuntos", "url": url_for("curriculum.index"), "icon": "curriculum", "group": "Trabalho docente"},
             {"key": "questoes", "label": "Banco de questões", "url": url_for("questions.list_questions"), "icon": "questions", "group": "Trabalho docente"},
-            {"key": "turmas", "label": "Minhas turmas", "url": url_for("academic.list_entities", entity="turmas"), "icon": "class", "group": "Turmas e perfil"},
-            {"key": "alunos", "label": "Alunos", "url": url_for("academic.list_entities", entity="alunos"), "icon": "people", "group": "Turmas e perfil"},
+            {"key": "estrutura", "label": "Minhas turmas e alunos", "url": url_for("academic.structure"), "icon": "class", "group": "Turmas e perfil"},
             {"key": "meu-cadastro", "label": "Meu cadastro", "url": url_for("academic.detail", entity="professores", item_id=profile["teacher_id"]), "icon": "person", "group": "Turmas e perfil"},
         ])
     else:
@@ -37,9 +36,7 @@ def build_navigation(profile):
         elif role == "school_coordinator":
             items.append({"key": "instituicoes", "label": "Minha instituição", "url": url_for("academic.detail", entity="instituicoes", item_id=profile["institution_id"]), "icon": "school", "group": "Rede escolar"})
         items.extend([
-            {"key": "series", "label": "Séries", "url": url_for("academic.list_entities", entity="series"), "icon": "layers", "group": "Rede escolar"},
-            {"key": "turmas", "label": "Turmas", "url": url_for("academic.list_entities", entity="turmas"), "icon": "class", "group": "Rede escolar"},
-            {"key": "alunos", "label": "Alunos", "url": url_for("academic.list_entities", entity="alunos"), "icon": "people", "group": "Rede escolar"},
+            {"key": "estrutura", "label": "Séries, turmas e alunos", "url": url_for("academic.structure"), "icon": "layers", "group": "Rede escolar"},
             {"key": "professores", "label": "Professores", "url": url_for("academic.list_entities", entity="professores"), "icon": "person", "group": "Rede escolar"},
         ])
         if role in {"school_coordinator", "institute_coordinator", "it_admin"}:
