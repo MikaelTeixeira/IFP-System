@@ -1,5 +1,7 @@
 from copy import deepcopy
 
+from flask import current_app, has_app_context
+
 
 INITIAL_SUBJECTS = [
     {"id": "mat-001", "nome": "Matemática", "escopo": "global", "instituicao_id": "", "status": "Ativa", "criado_por": "T.I."},
@@ -18,6 +20,39 @@ INITIAL_TOPICS = [
 
 SUBJECTS = deepcopy(INITIAL_SUBJECTS)
 TOPICS = deepcopy(INITIAL_TOPICS)
+
+
+def _database_active():
+    return has_app_context() and current_app.config.get("DATABASE_ENABLED", False)
+
+
+def persist_subject(subject):
+    if not _database_active():
+        return subject
+    from ..extensions import db
+    from ..models import Subject
+
+    db.session.merge(Subject(
+        id=subject["id"], name=subject["nome"], scope=subject["escopo"],
+        institution_id=subject.get("instituicao_id") or None, status=subject.get("status", "Ativa"),
+        created_by=subject.get("criado_por", ""),
+    ))
+    db.session.commit()
+    return subject
+
+
+def persist_topic(topic):
+    if not _database_active():
+        return topic
+    from ..extensions import db
+    from ..models import Topic
+
+    db.session.merge(Topic(
+        id=topic["id"], name=topic["nome"], subject_id=topic["materia_id"],
+        status=topic.get("status", "Ativo"), created_by=topic.get("criado_por", ""),
+    ))
+    db.session.commit()
+    return topic
 
 
 def find_subject(subject_id):
@@ -68,20 +103,21 @@ def add_subject(nome, escopo, instituicao_id, criado_por):
         "criado_por": criado_por,
     }
     SUBJECTS.append(subject)
-    return subject
+    return persist_subject(subject)
 
 
 def add_topic(nome, subject_id, criado_por=""):
     sequence = max([int(item["id"].split("-")[-1]) for item in TOPICS] or [0]) + 1
     topic = {"id": f"ass-{sequence:03d}", "nome": nome, "materia_id": subject_id, "status": "Ativo", "criado_por": criado_por}
     TOPICS.append(topic)
-    return topic
+    return persist_topic(topic)
 
 
 def update_topic(topic_id, nome):
     topic = find_topic(topic_id)
     if topic:
         topic["nome"] = nome
+        persist_topic(topic)
     return topic
 
 
@@ -89,4 +125,12 @@ def delete_topic(topic_id):
     topic = find_topic(topic_id)
     if topic:
         TOPICS.remove(topic)
+        if _database_active():
+            from ..extensions import db
+            from ..models import Topic
+
+            model = db.session.get(Topic, topic_id)
+            if model:
+                db.session.delete(model)
+                db.session.commit()
     return topic

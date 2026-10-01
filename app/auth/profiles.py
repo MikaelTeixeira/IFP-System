@@ -1,5 +1,6 @@
 PROFILES = {
     "student": {
+        "account_id": "usr-001",
         "label": "Aluno",
         "name": "Ana Clara Souza",
         "initials": "AC",
@@ -7,6 +8,7 @@ PROFILES = {
         "description": "Acompanhe seus dados acadêmicos e atividades.",
     },
     "teacher": {
+        "account_id": "usr-003",
         "label": "Professor",
         "name": "Rafael Lima",
         "initials": "RL",
@@ -15,6 +17,7 @@ PROFILES = {
         "description": "Consulte suas turmas e estudantes vinculados.",
     },
     "school_coordinator": {
+        "account_id": "usr-005",
         "label": "Coord. Colégio",
         "name": "Beatriz Nogueira",
         "initials": "BN",
@@ -22,12 +25,14 @@ PROFILES = {
         "description": "Gerencie a estrutura da Escola Horizonte.",
     },
     "institute_coordinator": {
+        "account_id": "usr-006",
         "label": "Coord. Instituto",
         "name": "Helena Martins",
         "initials": "HM",
         "description": "Acompanhe e organize todas as instituições.",
     },
     "it_admin": {
+        "account_id": "usr-007",
         "label": "Administrador/T.I.",
         "name": "Suporte IFP",
         "initials": "ST",
@@ -41,4 +46,3 @@ def get_profile(profile_key):
     if profile is None:
         return None
     return {"key": profile_key, **profile}
-

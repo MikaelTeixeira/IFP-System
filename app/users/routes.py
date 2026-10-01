@@ -69,7 +69,7 @@ def create():
                 "municipio_id": municipality_id,
                 "instituicao_id": institution_id,
             })
-            flash("Usuário adicionado durante esta sessão.", "success")
+            flash("Usuário adicionado no banco de dados.", "success")
             return redirect(url_for("users.index"))
 
     return render_template(

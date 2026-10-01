@@ -14,5 +14,6 @@
     <form method="dialog"><button class="button button--primary" type="submit">Voltar e responder</button></form>
   </dialog>
   <dialog class="site-dialog site-dialog--warning" data-assessment-protection-dialog aria-labelledby="protection-warning-title"><div class="site-dialog__mark" aria-hidden="true">!</div><h2 id="protection-warning-title">Conteúdo protegido</h2><p>Durante o simulado, não é permitido copiar, colar, imprimir ou capturar o conteúdo da prova.</p><form method="dialog"><button class="button button--primary" type="submit">Continuar o simulado</button></form></dialog>
+  <dialog class="site-dialog site-dialog--warning" data-time-expired-dialog{% if time_expired %} data-open-on-load{% endif %} aria-labelledby="time-expired-title"><div class="site-dialog__mark" aria-hidden="true">!</div><h2 id="time-expired-title">Tempo encerrado</h2><p>O servidor encerrou o tempo deste simulado. As respostas não podem mais ser alteradas ou entregues.</p><form method="dialog"><button class="button button--primary" type="submit">Entendi</button></form></dialog>
   <div class="assessment-privacy-screen" data-assessment-privacy-screen hidden><div><strong>Simulado protegido</strong><span>Volte para a janela da prova para continuar.</span></div></div>
 {% endblock %}

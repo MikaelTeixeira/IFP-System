@@ -9,7 +9,7 @@ from ..data.materials import MATERIAL_POSTS
 from ..data.questions import find_question
 from ..data.notifications import mark_profile_notifications_read, notifications_for_student
 from ..data.notifications import add_role_notification
-from ..data.attempts import answers_map, find_attempt, get_or_create_attempt, remaining_seconds, save_answers, submit_attempt
+from ..data.attempts import AttemptExpiredError, answers_map, find_attempt, get_or_create_attempt, remaining_seconds, save_answers, submit_attempt
 
 
 def student_record():
@@ -89,7 +89,14 @@ def take_assessment(assessment_id):
     if request.method == "POST":
         if attempt.status != "Em andamento" and assessment.get("tentativa_unica", True):
             return redirect(url_for("student_area.assessment_result", assessment_id=assessment_id))
-        missing_numbers = submit_attempt(attempt, questions, request.form)
+        try:
+            missing_numbers = submit_attempt(attempt, questions, request.form)
+        except AttemptExpiredError:
+            return render_template(
+                "student/take_assessment.html", page_title=assessment["titulo"], assessment=assessment,
+                questions=questions, answers=answers_map(attempt), remaining_seconds=0, missing_numbers=[],
+                time_expired=True, active_navigation="meus-simulados",
+            ), 409
         answers = answers_map(attempt)
         if missing_numbers:
             return render_template(
@@ -126,7 +133,10 @@ def save_assessment(assessment_id):
     if attempt.status != "Em andamento":
         return jsonify({"saved": False, "status": attempt.status}), 409
     questions = [find_question(question_id) for question_id in assessment["question_ids"] if find_question(question_id)]
-    save_answers(attempt, questions, request.form)
+    try:
+        save_answers(attempt, questions, request.form)
+    except AttemptExpiredError:
+        return jsonify({"saved": False, "status": "Tempo encerrado", "remaining_seconds": 0}), 409
     return jsonify({"saved": True, "remaining_seconds": remaining_seconds(attempt)})
 
 

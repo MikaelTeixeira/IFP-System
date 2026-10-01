@@ -78,7 +78,7 @@ aparecerão como links vazios no menu.
 | `/questoes/<id>/aprovar-revisao` | Aprovar revisão | Coordenação encerra a revisão após conferir a alteração |
 | `/aluno/simulados` | Meus simulados | Listar simulados liberados para a instituição do aluno |
 | `/aluno/simulados/<id>` | Orientações do simulado | Exibir duração, questões e instruções antes do início |
-| `/aluno/simulados/<id>/responder` | Responder simulado | Registrar respostas em memória e mostrar o resultado |
+| `/aluno/simulados/<id>/responder` | Responder simulado | Persistir respostas, tempo e entrega e mostrar o resultado |
 | `/aluno/simulados/<id>/salvar` | Salvar tentativa | Persistir respostas parciais e tempo restante |
 | `/aluno/simulados/<id>/resultado` | Resultado | Mostrar situação, pontuação e comentários da correção |
 | `/simulados/correcoes` | Correções abertas | Professor consulta respostas abertas de sua autoria |
@@ -104,8 +104,8 @@ aparecerão como links vazios no menu.
 
 Os formulários de edição usarão o sufixo `/editar`. Exclusões, ativações e
 mudanças de vínculo serão ações submetidas por `POST`. Municípios, instituições
-e usuários já usam persistência MySQL; os demais módulos ainda são restaurados
-após o reinício da aplicação.
+e usuários usam persistência MySQL; currículo, questões, simulados, solicitações,
+materiais, tentativas, notificações e relatórios também são restaurados do banco.
 
 ## Navegação por perfil
 

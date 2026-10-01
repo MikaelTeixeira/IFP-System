@@ -6,6 +6,10 @@ from ..models import AssessmentAttempt, AttemptAnswer
 from .questions import find_question
 
 
+class AttemptExpiredError(Exception):
+    pass
+
+
 def utcnow():
     return datetime.now(UTC).replace(tzinfo=None)
 
@@ -36,6 +40,10 @@ def remaining_seconds(attempt):
 
 
 def save_answers(attempt, questions, values):
+    if remaining_seconds(attempt) <= 0:
+        attempt.remaining_seconds = 0
+        db.session.commit()
+        raise AttemptExpiredError("O tempo do simulado foi encerrado.")
     existing = {item.question_id: item for item in attempt.answers}
     for question in questions:
         value = values.get(f"resposta_{question['id']}", "").strip()

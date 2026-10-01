@@ -15,12 +15,13 @@ from ..data.assessments import (
     find_request_assignment,
     find_request_submission,
     refresh_request_status,
+    persist_assessment_request,
     submit_request_question,
     teacher_request_history,
     update_assessment,
 )
 from ..data.curriculum import find_subject, subjects_for_profile
-from ..data.questions import QUESTIONS, find_question
+from ..data.questions import QUESTIONS, find_question, persist_question
 from ..data.notifications import add_notification, add_role_notification
 from ..data.reviews import add_review_event
 from ..data.attempts import attempts_with_pending_answers, grade_open_answers
@@ -49,7 +50,7 @@ def assessment_values(form, current=None):
     question_ids = form.getlist("question_ids") or current.get("question_ids", [])
     institution_ids = form.getlist("institution_ids") or current.get("institution_ids", [])
     try:
-        duration = int(form.get("duracao", current.get("duracao", 40)))
+        duration = max(1, int(form.get("duracao", current.get("duracao", 40))))
     except (TypeError, ValueError):
         duration = 40
     return {
@@ -164,6 +165,13 @@ def request_assessment():
         elif not request.form.get("prazo", "").strip():
             error = "Defina o prazo para os professores enviarem as questões."
         else:
+            try:
+                deadline = datetime.strptime(request.form.get("prazo", ""), "%Y-%m-%d").date()
+                if deadline < datetime.now().date():
+                    error = "O prazo não pode estar no passado."
+            except ValueError:
+                error = "Defina um prazo válido para o envio das questões."
+        if not error:
             institution = find("instituicoes", profile["institution_id"])
             assessment_request = add_assessment_request({
                 "titulo": f"Solicitação de simulado — {institution['nome']}",
@@ -371,9 +379,11 @@ def approve_request_question(request_id, question_id):
     submission["status"] = "Aprovada"
     submission["avaliada_em"] = datetime.now().strftime("%d/%m/%Y às %H:%M")
     refresh_request_status(assessment_request)
+    persist_assessment_request(assessment_request)
     question = find_question(question_id)
     if question and question.get("revisao_status") == "Revisada":
         question["revisao_status"] = "Aprovada"
+        persist_question(question)
         add_review_event(question_id, "Aprovada", "Revisão aprovada dentro da solicitação.", request_id)
     flash("Questão aprovada para este simulado.", "success")
     return redirect(url_for("assessments.request_detail", request_id=request_id))
@@ -400,9 +410,11 @@ def revise_request_question(request_id, question_id):
         "revisao_solicitante_role": "school_coordinator",
         "revisao_solicitante_id": assessment_request["instituicao_id"],
     })
+    persist_question(question)
     add_review_event(question_id, "Pendente", observation, request_id)
     add_role_notification("teacher", question["autor_id"], "Revisão de questão solicitada", observation, url_for("questions.detail", question_id=question_id), "question_review")
     refresh_request_status(assessment_request)
+    persist_assessment_request(assessment_request)
     flash("Revisão solicitada ao professor responsável.", "success")
     return redirect(url_for("assessments.request_detail", request_id=request_id))
 
@@ -421,6 +433,9 @@ def schedule_request(request_id):
         duration = max(1, int(request.form.get("duracao", "40")))
     except (ValueError, TypeError):
         flash("Informe uma data e uma duração válidas.", "danger")
+        return redirect(url_for("assessments.request_detail", request_id=request_id))
+    if datetime.strptime(raw_date, "%Y-%m-%d").date() < datetime.now().date():
+        flash("A data do simulado não pode estar no passado.", "danger")
         return redirect(url_for("assessments.request_detail", request_id=request_id))
     question_ids = [
         submission["question_id"]
@@ -445,6 +460,7 @@ def schedule_request(request_id):
         "tentativa_unica": True,
     })
     assessment_request.update({"status": "Agendado", "assessment_id": assessment["id"], "agendado_em": datetime.now().strftime("%d/%m/%Y às %H:%M")})
+    persist_assessment_request(assessment_request)
     eligible_series = set(assessment_request["serie_ids"])
     for student in DATA["alunos"]:
         school_class = find("turmas", student["turma_id"])
@@ -495,7 +511,7 @@ def edit(assessment_id):
         abort(403)
     if request.method == "POST":
         update_assessment(assessment_id, assessment_values(request.form, assessment))
-        flash("Simulado atualizado durante esta sessão.", "success")
+        flash("Simulado atualizado no banco de dados.", "success")
         return redirect(url_for("assessments.detail", assessment_id=assessment_id))
     return render_template("assessments/form.html", page_title="Editar simulado", assessment=assessment, questions=QUESTIONS, institutions=DATA["instituicoes"], active_navigation="simulados")
 
@@ -509,11 +525,11 @@ def publish(assessment_id):
         abort(404)
     if not assessment_in_scope(profile, assessment):
         abort(403)
-    assessment["status"] = "Publicado"
+    update_assessment(assessment_id, {"status": "Publicado"})
     for student in DATA["alunos"]:
         if student["instituicao_id"] in assessment.get("instituicao_ids", []):
             add_notification(student["id"], "Simulado publicado", assessment["titulo"], url_for("student_area.assessment_detail", assessment_id=assessment_id), "assessment_published")
-    flash("Simulado publicado no ambiente demonstrativo.", "success")
+    flash("Simulado publicado e salvo no banco de dados.", "success")
     return redirect(url_for("assessments.detail", assessment_id=assessment_id))
 
 
@@ -531,6 +547,6 @@ def schedule(assessment_id):
     assessment["data"] = request.form.get("data", "").strip() or assessment.get("data", "Data a definir")
     if profile["key"] == "school_coordinator":
         assessment["instituicao_ids"] = [profile["institution_id"]]
-    assessment["status"] = "Agendado"
+    update_assessment(assessment_id, {"data": assessment["data"], "instituicao_ids": assessment.get("instituicao_ids", []), "status": "Agendado"})
     flash("Simulado agendado dentro do escopo permitido.", "success")
     return redirect(url_for("assessments.detail", assessment_id=assessment_id))

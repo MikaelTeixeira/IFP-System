@@ -106,6 +106,30 @@ def identity_error(values, exclude_id=None):
     return f"{label} já cadastrado para {record['nome']}. Informe um dado diferente."
 
 
+def relationship_error(entity, values):
+    institution_id = values.get("instituicao_id", "")
+    if entity == "instituicoes" and not find("municipios", values.get("municipio_id")):
+        return "Selecione um município válido."
+    if entity in {"series", "turmas", "alunos", "professores"} and not find("instituicoes", institution_id):
+        return "Selecione uma instituição válida."
+    if entity == "turmas":
+        series = find("series", values.get("serie_id"))
+        if not series or series.get("instituicao_id") != institution_id:
+            return "A série selecionada deve pertencer à mesma instituição da turma."
+    if entity == "alunos":
+        school_class = find("turmas", values.get("turma_id"))
+        if not school_class or school_class.get("instituicao_id") != institution_id:
+            return "A turma selecionada deve pertencer à mesma instituição do aluno."
+    if entity == "professores":
+        allowed = {
+            subject["id"] for subject in SUBJECTS
+            if subject.get("escopo") == "global" or subject.get("instituicao_id") == institution_id
+        }
+        if any(subject_id not in allowed for subject_id in values.get("disciplina_ids", [])):
+            return "Selecione apenas matérias globais ou pertencentes à instituição do professor."
+    return None
+
+
 def user_filter_options(profile):
     institutions = [enrich("instituicoes", item) for item in scoped_records(profile, "instituicoes")]
     municipality_ids = {item["municipio_id"] for item in institutions}
@@ -172,12 +196,12 @@ def create(entity):
         values = form_values(entity, config, profile)
         if "nome" in values and not values["nome"]:
             values["nome"] = f"Novo {config['singular'].lower()}"
-        error = identity_error(values)
+        error = identity_error(values) or relationship_error(entity, values)
         if error:
             flash(error, "danger")
             return render_template("academic/form.html", page_title=f"Novo {config['singular'].lower()}", entity=entity, config=config, record=values, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=entity), 400
         record = add_record(entity, values)
-        flash(f"{config['singular']} salvo durante esta sessão.", "success")
+        flash(f"{config['singular']} salvo no banco de dados.", "success")
         return redirect(url_for("academic.detail", entity=entity, item_id=record["id"]))
     defaults = {"instituicao_id": profile.get("institution_id", "")} if profile["key"] == "school_coordinator" else {}
     return render_template("academic/form.html", page_title=f"Novo {config['singular'].lower()}", entity=entity, config=config, record=defaults, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=entity)
@@ -215,12 +239,12 @@ def edit(entity, item_id):
         values = form_values(entity, config, profile)
         if "nome" in values and not values["nome"]:
             values["nome"] = record["nome"]
-        error = identity_error(values, exclude_id=item_id)
+        error = identity_error(values, exclude_id=item_id) or relationship_error(entity, values)
         if error:
             flash(error, "danger")
             return render_template("academic/form.html", page_title=f"Editar {config['singular'].lower()}", entity=entity, config=config, record=values, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=entity), 400
         update_record(entity, item_id, values)
-        flash(f"{config['singular']} atualizado durante esta sessão.", "success")
+        flash(f"{config['singular']} atualizado no banco de dados.", "success")
         return redirect(url_for("academic.detail", entity=entity, item_id=item_id))
     return render_template("academic/form.html", page_title=f"Editar {config['singular'].lower()}", entity=entity, config=config, record=record, field_labels=FIELD_LABELS, field_help=FIELD_HELP, options=form_options(profile, config), active_navigation=entity)
 
@@ -235,7 +259,16 @@ def transfer_teacher(item_id):
     institution = find("instituicoes", institution_id)
     if not institution:
         abort(400)
-    teacher = update_record("professores", item_id, {"instituicao_id": institution_id, "turma_ids": []})
+    teacher = find("professores", item_id)
+    allowed_subjects = {
+        subject["id"] for subject in SUBJECTS
+        if subject.get("escopo") == "global" or subject.get("instituicao_id") == institution_id
+    }
+    teacher = update_record("professores", item_id, {
+        "instituicao_id": institution_id,
+        "turma_ids": [],
+        "disciplina_ids": [item for item in teacher.get("disciplina_ids", []) if item in allowed_subjects],
+    })
     flash(f"{teacher['nome']} foi transferido para {institution['nome']}. Os vínculos de turma foram limpos.", "success")
     return redirect(url_for("academic.detail", entity="professores", item_id=item_id))
 

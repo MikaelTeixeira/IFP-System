@@ -594,3 +594,33 @@ administrativa do MySQL instalado na máquina.
 - Foram cobertos o comparativo institucional, o isolamento da escola, o acesso
   por série e turma e o bloqueio para perfis sem permissão.
 - A suíte completa terminou com **64 testes aprovados**.
+
+## 1º de outubro de 2026 - Migração integral para o MySQL local
+
+**Estado:** domínios funcionais conectados e validados no banco local.
+
+### Alterações
+
+- Estrutura acadêmica, matérias, assuntos, questões, simulados, solicitações e
+  publicações receberam tabelas próprias e operações persistentes.
+- Alunos e professores foram vinculados às contas de usuário; transferências,
+  alterações cadastrais e desativações agora sincronizam os dois registros.
+- A carga inicial passou a criar somente tabelas vazias e a aplicação recarrega
+  todas as coleções a partir do banco em cada inicialização.
+- Revisões, aprovações, anexos, agendamentos e edições que antes alteravam apenas
+  o objeto exibido agora também são gravados imediatamente.
+- Os indicadores demonstrativos dos relatórios foram movidos para o MySQL e uma
+  escola sem alunos passa a apresentar indicadores zerados.
+- O servidor passou a rejeitar salvamento e entrega depois do término do tempo,
+  além de recusar prazos e datas de agendamento anteriores ao dia atual.
+- Foi adicionada limpeza de metadados e arquivos sem questão ou publicação
+  proprietária; o arquivo órfão identificado na análise foi removido.
+
+### Verificação
+
+- A suíte completa terminou com **65 testes aprovados**, incluindo reinicialização
+  sobre um banco persistente.
+- A inicialização foi executada contra o MySQL local e confirmou as tabelas e a
+  carga inicial dos domínios migrados.
+- As restrições de segurança que dependem de autenticação real e infraestrutura
+  permanecem registradas em `PENDENCIAS_SEGURANCA.md`.

@@ -1,4 +1,7 @@
+from copy import deepcopy
 from datetime import datetime
+
+from flask import current_app, has_app_context
 
 
 ASSESSMENTS = [
@@ -19,7 +22,50 @@ ASSESSMENTS = [
     }
 ]
 
+INITIAL_ASSESSMENTS = deepcopy(ASSESSMENTS)
+
 ASSESSMENT_REQUESTS = []
+
+
+def _database_active():
+    return has_app_context() and current_app.config.get("DATABASE_ENABLED", False)
+
+
+def persist_assessment(assessment):
+    if not _database_active():
+        return assessment
+    from ..extensions import db
+    from ..models import Assessment
+
+    db.session.merge(Assessment(
+        id=assessment["id"], title=assessment["titulo"], subject=assessment.get("disciplina", ""),
+        topic=assessment.get("assunto", ""), modality=assessment.get("modalidade", "Remoto"),
+        audience=assessment.get("publico", ""), duration=max(1, int(assessment.get("duracao", 40))),
+        scheduled_date=assessment.get("data", ""), status=assessment.get("status", "Rascunho"),
+        question_ids=list(assessment.get("question_ids", [])),
+        institution_ids=list(assessment.get("instituicao_ids", [])),
+        series_ids=list(assessment.get("serie_ids", [])), description=assessment.get("descricao", ""),
+        single_attempt=bool(assessment.get("tentativa_unica", True)),
+    ))
+    db.session.commit()
+    return assessment
+
+
+def persist_assessment_request(assessment_request):
+    if not _database_active():
+        return assessment_request
+    from ..extensions import db
+    from ..models import AssessmentRequest
+
+    model = db.session.get(AssessmentRequest, assessment_request["id"])
+    if not model:
+        model = AssessmentRequest(id=assessment_request["id"])
+        db.session.add(model)
+    model.institution_id = assessment_request["instituicao_id"]
+    model.status = assessment_request.get("status", "Aguardando questões")
+    model.payload = deepcopy(assessment_request)
+    db.session.commit()
+    return assessment_request
 
 
 def find_assessment(assessment_id):
@@ -30,13 +76,14 @@ def add_assessment(values):
     sequence = max([int(item["id"].split("-")[-1]) for item in ASSESSMENTS] or [0]) + 1
     assessment = {"id": f"sim-2026-{sequence:03d}", "disciplina": "Matemática", "assunto": "Operações primárias", "status": "Rascunho", "tentativa_unica": True, **values}
     ASSESSMENTS.append(assessment)
-    return assessment
+    return persist_assessment(assessment)
 
 
 def update_assessment(assessment_id, values):
     assessment = find_assessment(assessment_id)
     if assessment:
         assessment.update(values)
+        persist_assessment(assessment)
     return assessment
 
 
@@ -49,7 +96,7 @@ def add_assessment_request(values):
         **values,
     }
     ASSESSMENT_REQUESTS.insert(0, assessment_request)
-    return assessment_request
+    return persist_assessment_request(assessment_request)
 
 
 def find_assessment_request(request_id):
@@ -106,6 +153,7 @@ def submit_request_question(assessment_request, teacher_id, subject_id, question
         }
         assignment["entregas"].append(existing)
     refresh_request_status(assessment_request)
+    persist_assessment_request(assessment_request)
     return existing
 
 
@@ -117,6 +165,7 @@ def update_submissions_after_question_edit(question_id):
             submission["status"] = "Reenviada"
             submission["enviado_em"] = datetime.now().strftime("%d/%m/%Y às %H:%M")
             refresh_request_status(assessment_request)
+            persist_assessment_request(assessment_request)
             updated = True
     return updated
 

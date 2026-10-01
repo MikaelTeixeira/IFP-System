@@ -1,12 +1,43 @@
 from functools import wraps
 
-from flask import abort, redirect, session, url_for
+from flask import abort, current_app, has_app_context, redirect, session, url_for
 
 from .profiles import get_profile
 
 
 def current_profile():
-    return get_profile(session.get("profile"))
+    profile = get_profile(session.get("profile"))
+    if not profile or not has_app_context() or not current_app.config.get("DATABASE_ENABLED", False):
+        return profile
+    from ..extensions import db
+    from ..models import UserAccount
+
+    account = db.session.get(UserAccount, profile.get("account_id"))
+    if not account or account.status.lower() not in {"ativo", "ativa"}:
+        return None
+    profile["name"] = account.name
+    profile["initials"] = "".join(part[0].upper() for part in account.name.split()[:2])
+    if account.institution_id:
+        profile["institution_id"] = account.institution_id
+    if profile["key"] == "teacher":
+        from ..data.academic import find
+
+        teacher = find("professores", profile["teacher_id"])
+        if teacher:
+            profile["institution_id"] = teacher["instituicao_id"]
+            profile["class_ids"] = list(teacher.get("turma_ids", []))
+    return profile
+
+
+def profile_is_active(profile_key):
+    profile = get_profile(profile_key)
+    if not profile or not has_app_context() or not current_app.config.get("DATABASE_ENABLED", False):
+        return bool(profile)
+    from ..extensions import db
+    from ..models import UserAccount
+
+    account = db.session.get(UserAccount, profile.get("account_id"))
+    return bool(account and account.status.lower() in {"ativo", "ativa"})
 
 
 def login_required(view):
@@ -31,4 +62,3 @@ def roles_required(*roles):
         return wrapped
 
     return decorator
-

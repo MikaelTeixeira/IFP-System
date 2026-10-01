@@ -3,7 +3,7 @@ from copy import deepcopy
 from flask import current_app, has_app_context
 from sqlalchemy import func, or_
 
-from .academic import find
+from .academic import DATA, find
 from ..extensions import db
 from ..models import UserAccount
 
@@ -61,12 +61,36 @@ def add_user(values):
     sequence = max([int(item["id"].split("-")[-1]) for item in current_users] or [0]) + 1
     user = {"id": f"usr-{sequence:03d}", **values, "status": "Ativo"}
     if database_active():
-        db.session.add(UserAccount(
+        account = UserAccount(
             id=user["id"], name=user["nome"], cpf=user["cpf"], email=user["email"], role=user["cargo"],
             municipality_id=user["municipio_id"] or None, institution_id=user["instituicao_id"] or None,
             status=user["status"],
-        ))
+        )
+        db.session.add(account)
+        db.session.flush()
+        if user["cargo"] in {"student", "teacher"}:
+            from ..models import Student, Teacher
+
+            entity = "alunos" if user["cargo"] == "student" else "professores"
+            prefix = "alu" if entity == "alunos" else "pro"
+            sequence = max([int(item["id"].rsplit("-", 1)[-1]) for item in DATA[entity]] or [0]) + 1
+            person_id = f"{prefix}-{sequence:03d}"
+            if entity == "alunos":
+                person = Student(
+                    id=person_id, name=user["nome"], cpf=user["cpf"], email=user["email"],
+                    enrollment=f"CAD-{sequence:04d}", class_id=None, institution_id=user["instituicao_id"],
+                    admission="", status="Pendente", user_account_id=user["id"],
+                )
+            else:
+                person = Teacher(
+                    id=person_id, name=user["nome"], cpf=user["cpf"], email=user["email"],
+                    subject_ids=[], class_ids=[], institution_id=user["instituicao_id"],
+                    status="Ativo", user_account_id=user["id"],
+                )
+            db.session.add(person)
         db.session.commit()
+        if user["cargo"] in {"student", "teacher"}:
+            DATA[entity].append(person.to_record())
     if not any(item["id"] == user["id"] for item in USER_ACCOUNTS):
         USER_ACCOUNTS.append(user)
     return user
@@ -78,11 +102,27 @@ def toggle_user(user_id):
         if not model:
             return None
         model.status = "Inativo" if model.status == "Ativo" else "Ativo"
+        from ..models import Student, Teacher
+
+        person = Student.query.filter_by(user_account_id=user_id).first()
+        if person:
+            person.status = "Inativa" if model.status == "Inativo" else "Ativa"
+        teacher = Teacher.query.filter_by(user_account_id=user_id).first()
+        if teacher:
+            teacher.status = model.status
         db.session.commit()
         user = model.to_record()
         cached = next((item for item in USER_ACCOUNTS if item["id"] == user_id), None)
         if cached:
             cached.update(user)
+        if person:
+            academic_record = find("alunos", person.id)
+            if academic_record:
+                academic_record.update(person.to_record())
+        if teacher:
+            academic_record = find("professores", teacher.id)
+            if academic_record:
+                academic_record.update(teacher.to_record())
         return user
     user = find_user(user_id)
     if user:

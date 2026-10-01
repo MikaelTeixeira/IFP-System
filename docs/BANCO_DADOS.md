@@ -37,7 +37,13 @@ A camada persistente contém as tabelas relacionais:
 
 - `municipalities`;
 - `institutions`, vinculada ao município por chave estrangeira;
-- `user_accounts`, vinculada opcionalmente a município e instituição.
+- `user_accounts`, vinculada opcionalmente a município e instituição;
+- `grade_series`, `school_classes`, `students` e `teachers`, com os vínculos acadêmicos;
+- `subjects` e `topics`, com escopo global ou institucional;
+- `questions`, incluindo alternativas, resposta esperada, imagem e estado de revisão;
+- `assessments` e `assessment_requests`, incluindo composição e fluxo de solicitação;
+- `material_posts`, com texto, turmas e referência ao anexo;
+- `report_snapshots`, com os indicadores demonstrativos usados pelos gráficos;
 - `assessment_attempts`, com início, entrega, duração, tempo restante, situação e pontuação;
 - `attempt_answers`, com respostas objetivas ou abertas, nota, conceito e comentário;
 - `stored_files`, com caminho relativo, nome original, formato e tamanho;
@@ -45,7 +51,14 @@ A camada persistente contém as tabelas relacionais:
 - `question_review_events`, com o histórico dos estados de revisão.
 
 Esses registros sobrevivem ao reinício do Flask quando `instance/mysql.env`
-estiver configurado. Os arquivos físicos ficam sob `instance/uploads`, fora da
-pasta pública, e somente são entregues pelas rotas após a verificação do perfil.
-Currículo, conteúdo das questões, configuração dos simulados e texto das
-publicações ainda permanecem na camada demonstrativa até a próxima migração.
+estiver configurado. As listas usadas pelas telas são recarregadas das tabelas
+ao iniciar a aplicação e cada inclusão, edição, transferência, revisão,
+agendamento ou exclusão atualiza o MySQL imediatamente.
+
+Os arquivos físicos ficam sob `instance/uploads`, fora da pasta pública, e
+somente são entregues pelas rotas após a verificação do perfil. Registros de
+arquivo sem questão ou publicação proprietária são removidos na inicialização.
+
+Os números históricos de frequência e evolução ainda são dados de demonstração,
+mas agora ficam registrados em `report_snapshots`. Resultados de simulados são
+calculados a partir das tentativas e respostas persistidas.

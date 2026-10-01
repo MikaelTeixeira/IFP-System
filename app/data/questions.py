@@ -1,3 +1,8 @@
+from copy import deepcopy
+
+from flask import current_app, has_app_context
+
+
 QUESTIONS = [
     {
         "id": "que-001", "disciplina": "Matemática", "assunto": "Operações primárias", "operacao": "Soma", "dificuldade": "Fácil",
@@ -107,6 +112,39 @@ for question in QUESTIONS:
     question.setdefault("revisao_status", "")
     question.setdefault("revisao_observacao", "")
 
+INITIAL_QUESTIONS = deepcopy(QUESTIONS)
+
+
+def _database_active():
+    return has_app_context() and current_app.config.get("DATABASE_ENABLED", False)
+
+
+def persist_question(question):
+    if not _database_active():
+        return question
+    from ..extensions import db
+    from ..models import Question
+
+    db.session.merge(Question(
+        id=question["id"], subject_id=question["materia_id"], topic_id=question["assunto_id"],
+        institution_id=question["instituicao_id"], author_id=question["autor_id"],
+        subject_name=question["disciplina"], topic_name=question["assunto"],
+        operation=question.get("operacao", ""), difficulty=question.get("dificuldade", ""),
+        statement=question["enunciado"], question_type=question.get("tipo", "objetiva"),
+        alternatives=dict(question.get("alternativas") or {}), answer_key=question.get("gabarito", ""),
+        expected_answer=question.get("resposta_esperada", ""), explanation=question.get("explicacao", ""),
+        author_name=question.get("autor", ""), status=question.get("status", "Ativa"),
+        image=question.get("imagem"), review_status=question.get("revisao_status", ""),
+        review_note=question.get("revisao_observacao", ""),
+        review_requested_by=question.get("revisao_solicitada_por", ""),
+        review_requested_at=question.get("revisao_solicitada_em", ""),
+        review_requester_role=question.get("revisao_solicitante_role", ""),
+        review_requester_id=question.get("revisao_solicitante_id", ""),
+        review_answered_at=question.get("revisao_respondida_em", ""),
+    ))
+    db.session.commit()
+    return question
+
 
 def find_question(question_id):
     return next((question for question in QUESTIONS if question["id"] == question_id), None)
@@ -116,11 +154,12 @@ def add_question(values):
     sequence = max(int(item["id"].split("-")[-1]) for item in QUESTIONS) + 1
     question = {"id": f"que-{sequence:03d}", "status": "Ativa", **values}
     QUESTIONS.append(question)
-    return question
+    return persist_question(question)
 
 
 def update_question(question_id, values):
     question = find_question(question_id)
     if question:
         question.update(values)
+        persist_question(question)
     return question

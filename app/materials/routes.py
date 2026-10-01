@@ -117,7 +117,7 @@ def create():
                 if error:
                     delete_material(material["id"])
                     return render_template("materials/form.html", page_title="Publicar material", subjects=subjects, topics=topics, classes=classes, values=values, selected_classes=selected_classes, material=None, error=error, active_navigation="materiais"), 400
-                material["anexo"] = attachment
+                update_material(material["id"], {"anexo": attachment})
             for student in DATA["alunos"]:
                 if student["turma_id"] in selected_classes:
                     add_notification(student["id"], "Novo material para sua turma", title, url_for("student_area.review"), "material")

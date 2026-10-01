@@ -104,7 +104,7 @@ def test_institute_coordinator_can_create_record(client):
     response = client.post("/academico/municipios/novo", data={"nome": "Aquiraz", "uf": "CE"}, follow_redirects=True)
     assert response.status_code == 200
     assert "Aquiraz" in response.get_data(as_text=True)
-    assert "salvo durante esta sessão" in response.get_data(as_text=True)
+    assert "salvo no banco de dados" in response.get_data(as_text=True)
 
 
 def test_filter_and_custom_error_pages(client):
@@ -242,7 +242,7 @@ def test_institute_coordinator_can_publish_assessment(client):
     response = client.post("/simulados/sim-2026-001/publicar", follow_redirects=True)
     assert response.status_code == 200
     assert find_assessment("sim-2026-001")["status"] == "Publicado"
-    assert "publicado no ambiente demonstrativo" in response.get_data(as_text=True)
+    assert "publicado e salvo no banco de dados" in response.get_data(as_text=True)
 
 
 def test_user_filters_support_municipality_and_institution(client):
@@ -1050,3 +1050,70 @@ def test_material_attachment_is_persisted_removed_and_access_controlled(client):
     assert not path.exists()
     with client.application.app_context():
         assert db.session.get(StoredFile, file_id) is None
+
+
+def test_domain_state_survives_application_restart():
+    from pathlib import Path
+    from uuid import uuid4
+
+    database_file = Path(__file__).resolve().parents[1] / "tmp" / f"ifp-persistence-{uuid4()}.sqlite"
+    database_file.parent.mkdir(parents=True, exist_ok=True)
+    database_path = database_file.as_posix()
+
+    class PersistentConfig(TestConfig):
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{database_path}"
+
+    first_app = create_app(PersistentConfig)
+    with first_app.app_context():
+        from app.data.assessments import add_assessment, add_assessment_request
+        from app.data.curriculum import add_subject, add_topic
+        from app.data.materials import add_material
+        from app.data.questions import add_question
+
+        subject = add_subject("Geometria integrada", "global", "", "Teste")
+        topic = add_topic("Formas planas", subject["id"], "Teste")
+        question = add_question({
+            "materia_id": subject["id"], "assunto_id": topic["id"], "instituicao_id": "inst-001",
+            "autor_id": "pro-001", "disciplina": subject["nome"], "assunto": topic["nome"],
+            "operacao": "Geometria", "dificuldade": "Fácil", "enunciado": "Quantos lados tem um quadrado?",
+            "tipo": "objetiva", "alternativas": {"A": "3", "B": "4", "C": "5", "D": "6"},
+            "gabarito": "B", "resposta_esperada": "", "explicacao": "Um quadrado tem quatro lados.",
+            "autor": "Rafael Lima", "imagem": None, "revisao_status": "", "revisao_observacao": "",
+        })
+        assessment = add_assessment({
+            "titulo": "Persistência completa", "disciplina": subject["nome"], "assunto": topic["nome"],
+            "modalidade": "Remoto", "publico": "9º ano", "duracao": 20, "data": "20/10/2026",
+            "question_ids": [question["id"]], "instituicao_ids": ["inst-001"], "serie_ids": ["ser-003"],
+            "descricao": "Teste após reinício.",
+        })
+        assessment_request = add_assessment_request({
+            "titulo": "Solicitação persistente", "instituicao_id": "inst-001", "serie_ids": ["ser-003"],
+            "atribuicoes": [{"materia_id": subject["id"], "professor_id": "pro-001", "entregas": []}],
+            "prazo": "2026-10-20", "observacoes": "",
+        })
+        material = add_material({
+            "titulo": "Material persistente", "descricao": "Descrição", "texto": "Conteúdo",
+            "professor_id": "pro-001", "materia_id": subject["id"], "assunto_id": topic["id"],
+            "turma_ids": ["tur-001"], "anexo": None,
+        })
+        persisted_ids = subject["id"], topic["id"], question["id"], assessment["id"], assessment_request["id"], material["id"]
+        from app.extensions import db
+        db.engine.dispose()
+
+    second_app = create_app(PersistentConfig)
+    with second_app.app_context():
+        from app.data.assessments import find_assessment, find_assessment_request
+        from app.data.curriculum import find_subject, find_topic
+        from app.data.materials import find_material
+        from app.data.questions import find_question
+
+        subject_id, topic_id, question_id, assessment_id, request_id, material_id = persisted_ids
+        assert find_subject(subject_id)["nome"] == "Geometria integrada"
+        assert find_topic(topic_id)["nome"] == "Formas planas"
+        assert find_question(question_id)["enunciado"] == "Quantos lados tem um quadrado?"
+        assert find_assessment(assessment_id)["titulo"] == "Persistência completa"
+        assert find_assessment_request(request_id)["titulo"] == "Solicitação persistente"
+        assert find_material(material_id)["titulo"] == "Material persistente"
+        from app.extensions import db
+        db.engine.dispose()
+    database_file.unlink(missing_ok=True)

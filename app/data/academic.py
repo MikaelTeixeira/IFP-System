@@ -118,17 +118,73 @@ def toggle_record(entity, item_id):
 
 
 def _persist_reference_record(entity, record):
-    if entity not in {"municipios", "instituicoes"} or not has_app_context() or not current_app.config.get("DATABASE_ENABLED", False):
+    if not has_app_context() or not current_app.config.get("DATABASE_ENABLED", False):
         return
     from ..extensions import db
-    from ..models import Institution, Municipality
+    from ..models import GradeSeries, Institution, Municipality, SchoolClass, Student, Teacher, UserAccount
 
     if entity == "municipios":
         model = Municipality(id=record["id"], name=record["nome"], state=record["uf"], code=record["codigo"], status=record["status"])
-    else:
+    elif entity == "instituicoes":
         model = Institution(id=record["id"], name=record["nome"], municipality_id=record["municipio_id"], code=record["codigo"], status=record["status"])
+    elif entity == "series":
+        model = GradeSeries(
+            id=record["id"], name=record["nome"], institution_id=record["instituicao_id"],
+            shift=record["turno"], status=record["status"],
+        )
+    elif entity == "turmas":
+        model = SchoolClass(
+            id=record["id"], name=record["nome"], series_id=record["serie_id"],
+            institution_id=record["instituicao_id"], school_year=record["ano_letivo"],
+            shift=record.get("turno", ""), status=record["status"],
+        )
+    elif entity == "alunos":
+        account = _sync_person_account(record, "student", UserAccount, db)
+        model = Student(
+            id=record["id"], name=record["nome"], cpf=record["cpf"], email=record["email"],
+            enrollment=record["matricula"], class_id=record.get("turma_id") or None,
+            institution_id=record["instituicao_id"], admission=record.get("ingresso", ""),
+            status=record["status"], user_account_id=account.id,
+        )
+    elif entity == "professores":
+        account = _sync_person_account(record, "teacher", UserAccount, db)
+        model = Teacher(
+            id=record["id"], name=record["nome"], cpf=record["cpf"], email=record["email"],
+            subject_ids=list(record.get("disciplina_ids", [])), class_ids=list(record.get("turma_ids", [])),
+            institution_id=record["instituicao_id"], status=record["status"], user_account_id=account.id,
+        )
+    else:
+        return
     db.session.merge(model)
     db.session.commit()
+
+
+def _sync_person_account(record, role, user_model, database):
+    from .users import USER_ACCOUNTS
+
+    account = database.session.get(user_model, record.get("_user_account_id")) if record.get("_user_account_id") else None
+    if not account:
+        account = user_model.query.filter_by(cpf=record["cpf"]).first()
+    if not account:
+        existing_ids = [int(item.id.rsplit("-", 1)[-1]) for item in user_model.query.all()]
+        account = user_model(id=f"usr-{max(existing_ids or [0]) + 1:03d}")
+        database.session.add(account)
+    institution = find("instituicoes", record["instituicao_id"])
+    account.name = record["nome"]
+    account.cpf = record["cpf"]
+    account.email = record["email"]
+    account.role = role
+    account.institution_id = record["instituicao_id"]
+    account.municipality_id = institution["municipio_id"] if institution else None
+    account.status = "Inativo" if record.get("status", "").lower() in {"inativo", "inativa"} else record.get("status", "Ativo")
+    database.session.flush()
+    record["_user_account_id"] = account.id
+    cached = next((item for item in USER_ACCOUNTS if item["id"] == account.id), None)
+    if cached:
+        cached.update(account.to_record())
+    else:
+        USER_ACCOUNTS.append(account.to_record())
+    return account
 
 
 def normalize_cpf(value):
@@ -150,4 +206,16 @@ def find_identity_conflict(cpf="", email="", exclude_id=None):
                 return "cpf", record
             if normalized_email and normalize_email(record.get("email", "")) == normalized_email:
                 return "email", record
+    if has_app_context() and current_app.config.get("DATABASE_ENABLED", False):
+        from ..models import UserAccount
+
+        excluded_record = next((find(entity, exclude_id) for entity in ("alunos", "professores") if find(entity, exclude_id)), None)
+        excluded_account_id = excluded_record.get("_user_account_id") if excluded_record else None
+        for account in UserAccount.query.all():
+            if account.id == excluded_account_id:
+                continue
+            if normalized_cpf and normalize_cpf(account.cpf) == normalized_cpf:
+                return "cpf", account.to_record()
+            if normalized_email and normalize_email(account.email) == normalized_email:
+                return "email", account.to_record()
     return None, None

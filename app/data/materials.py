@@ -1,4 +1,7 @@
+from copy import deepcopy
 from datetime import datetime
+
+from flask import current_app, has_app_context
 
 
 ALLOWED_ATTACHMENT_EXTENSIONS = {"pdf", "png", "ppt", "pptx"}
@@ -23,6 +26,29 @@ MATERIAL_POSTS = [
     }
 ]
 
+INITIAL_MATERIAL_POSTS = deepcopy(MATERIAL_POSTS)
+
+
+def _database_active():
+    return has_app_context() and current_app.config.get("DATABASE_ENABLED", False)
+
+
+def persist_material(material):
+    if not _database_active():
+        return material
+    from ..extensions import db
+    from ..models import MaterialPost
+
+    db.session.merge(MaterialPost(
+        id=material["id"], title=material["titulo"], description=material["descricao"],
+        text=material.get("texto", ""), teacher_id=material["professor_id"],
+        subject_id=material["materia_id"], topic_id=material["assunto_id"],
+        class_ids=list(material.get("turma_ids", [])), published_at=material["publicado_em"],
+        attachment=material.get("anexo"),
+    ))
+    db.session.commit()
+    return material
+
 
 def find_material(material_id):
     return next((item for item in MATERIAL_POSTS if item["id"] == material_id), None)
@@ -36,13 +62,14 @@ def add_material(values):
         **values,
     }
     MATERIAL_POSTS.insert(0, material)
-    return material
+    return persist_material(material)
 
 
 def update_material(material_id, values):
     material = find_material(material_id)
     if material:
         material.update(values)
+        persist_material(material)
     return material
 
 
@@ -50,6 +77,14 @@ def delete_material(material_id):
     material = find_material(material_id)
     if material:
         MATERIAL_POSTS.remove(material)
+        if _database_active():
+            from ..extensions import db
+            from ..models import MaterialPost
+
+            model = db.session.get(MaterialPost, material_id)
+            if model:
+                db.session.delete(model)
+                db.session.commit()
     return material
 
 

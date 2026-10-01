@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 
 from . import questions_bp
 from ..auth.security import current_profile, login_required
-from ..data.questions import QUESTIONS, add_question, find_question, update_question
+from ..data.questions import QUESTIONS, add_question, find_question, persist_question, update_question
 from ..data.academic import DATA, find
 from ..data.curriculum import TOPICS, find_subject, find_topic, subjects_for_profile
 from ..storage import absolute_file_path, delete_stored_file, save_uploaded_file, stored_file
@@ -214,8 +214,16 @@ def create():
         question = add_question({**values, "imagem": None})
         try:
             question["imagem"] = question_image(question["id"])
+            persist_question(question)
         except ValueError as error:
+            from ..extensions import db
+            from ..models import Question
+
             QUESTIONS.remove(question)
+            model = db.session.get(Question, question["id"])
+            if model:
+                db.session.delete(model)
+                db.session.commit()
             return render_template("questions/form.html", page_title="Nova questão", **question_form_context(profile, values, str(error), assessment_request_id)), 400
         if assessment_request_id:
             from ..data.assessments import submit_request_question
@@ -223,7 +231,7 @@ def create():
             submit_request_question(assessment_request, profile["teacher_id"], assigned_subject_id, question["id"], "Nova")
             flash("Nova questão salva e enviada para avaliação da coordenação.", "success")
             return redirect(url_for("assessments.answer_request", request_id=assessment_request_id))
-        flash("Questão salva no banco durante esta sessão.", "success")
+        flash("Questão salva no banco de dados.", "success")
         return redirect(url_for("questions.detail", question_id=question["id"]))
     return render_template("questions/form.html", page_title="Nova questão", **question_form_context(
         profile,
@@ -259,7 +267,8 @@ def edit(question_id):
             from ..data.assessments import update_submissions_after_question_edit
 
             update_submissions_after_question_edit(question_id)
-        flash("Questão atualizada durante esta sessão.", "success")
+            persist_question(question)
+        flash("Questão atualizada no banco de dados.", "success")
         return redirect(url_for("questions.detail", question_id=question_id))
     return render_template("questions/form.html", page_title="Editar questão", **question_form_context(profile, question))
 
@@ -287,6 +296,7 @@ def request_revision(question_id):
         "revisao_solicitante_role": profile["key"],
         "revisao_solicitante_id": actor_identity(profile),
     })
+    persist_question(question)
     add_review_event(question_id, "Pendente", observation)
     add_role_notification("teacher", question["autor_id"], "Revisão de questão solicitada", observation, url_for("questions.detail", question_id=question_id), "question_review")
     flash(f"Revisão solicitada ao professor {question['autor']}.", "success")
@@ -303,6 +313,7 @@ def start_revision(question_id):
     if question.get("revisao_status") != "Pendente":
         abort(400)
     question["revisao_status"] = "Em revisão"
+    persist_question(question)
     add_review_event(question_id, "Em revisão", "Professor iniciou os ajustes.")
     return redirect(url_for("questions.edit", question_id=question_id))
 
@@ -319,6 +330,7 @@ def approve_revision(question_id):
     if question.get("revisao_status") != "Revisada":
         abort(400)
     question["revisao_status"] = "Aprovada"
+    persist_question(question)
     add_review_event(question_id, "Aprovada", "Revisão aprovada pela coordenação.")
     add_role_notification("teacher", question["autor_id"], "Revisão aprovada", f"A revisão da questão {question_id} foi aprovada.", url_for("questions.detail", question_id=question_id), "review_approved")
     flash("Revisão aprovada.", "success")

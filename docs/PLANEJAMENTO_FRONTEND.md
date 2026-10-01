@@ -3,8 +3,8 @@
 ## 1. Objetivo
 
 Construir um frontend funcional para o **Instituto Fabiana Pinto**, com Flask,
-dados demonstrativos e navegação completa. A base administrativa já usa MySQL
-local; autenticação real e validação de credenciais continuam fora desta etapa.
+dados demonstrativos persistidos no MySQL local e navegação completa.
+Autenticação real e validação de credenciais continuam fora desta etapa.
 
 A primeira entrega contemplou os **blocos 1 a 4**. A segunda etapa amplia o
 frontend com os **blocos 5 e 6**, dedicados ao banco de questões e aos
@@ -28,10 +28,10 @@ simulados.
 - **Organização:** Blueprints por domínio funcional.
 - **Interface:** HTML semântico e CSS próprio com componentes reutilizáveis.
 - **Interações:** JavaScript modular, sem dependência obrigatória de framework.
-- **Dados temporários:** estruturas mockadas em memória.
+- **Dados:** tabelas MySQL com carga inicial demonstrativa e uma camada de compatibilidade para as telas.
 - **Sessão:** sessão Flask usada apenas para simular o perfil ativo.
-- **Persistência:** MySQL local para municípios, instituições e usuários; os
-  demais módulos ainda são restaurados ao reiniciar a aplicação.
+- **Persistência:** MySQL local para estrutura acadêmica, currículo, questões,
+  simulados, solicitações, materiais, usuários, tentativas e relatórios.
 
 Dependências adicionais só serão incluídas quando trouxerem benefício claro e
 serão registradas no diário de desenvolvimento.

@@ -127,6 +127,9 @@ if (assessmentTimer) {
     if (!remainingSeconds) {
       assessmentTimer.classList.add("is-ended");
       timerLabel.textContent = "Tempo encerrado";
+      studentAssessmentForm?.querySelectorAll("input, textarea, button[type='submit']").forEach((field) => {
+        field.disabled = true;
+      });
       window.clearInterval(timerInterval);
     }
   };
@@ -134,6 +137,9 @@ if (assessmentTimer) {
   const timerInterval = window.setInterval(updateTimer, 1000);
   updateTimer();
 }
+
+const timeExpiredDialog = document.querySelector("[data-time-expired-dialog][data-open-on-load]");
+if (timeExpiredDialog && !timeExpiredDialog.open) timeExpiredDialog.showModal();
 
 let assessmentSaveTimer;
 const saveAssessmentProgress = async () => {

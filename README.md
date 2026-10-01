@@ -1,8 +1,7 @@
 # Instituto Fabiana Pinto - Sistema de Avaliações
 
 Sistema funcional de aplicação, acompanhamento e análise de avaliações,
-construído com Flask. A persistência MySQL começou pela base administrativa;
-os módulos ainda não migrados continuam usando dados demonstrativos em memória.
+construído com Flask e persistência local em MySQL.
 
 ## Estado atual
 
@@ -26,8 +25,8 @@ perfis, estrutura acadêmica, banco de questões e gestão de simulados.
 - Filtros de alunos e professores por município e instituição.
 - Transferência de professores entre instituições para Coordenação do Instituto e T.I.
 - Gestão de usuários exclusiva para T.I., com filtros, ordenação, cadastro e desativação.
-- Persistência local MySQL para municípios, instituições e usuários.
-- Criação, composição, publicação e agendamento demonstrativos de simulados.
+- Persistência local MySQL para estrutura acadêmica, currículo, questões, simulados, solicitações, materiais, usuários, tentativas, arquivos, notificações e indicadores dos relatórios.
+- Criação, composição, publicação e agendamento de simulados persistidos.
 - Fluxo de simulados conduzido pelo Coordenador do Colégio: solicitação com prazo, entrega pelos professores, aprovação ou revisão, agendamento e aviso aos alunos.
 - Professores podem responder com questões do próprio banco, do histórico de envios ou com uma questão nova.
 - Central de notificações do aluno para os simulados agendados ao seu ano escolar.

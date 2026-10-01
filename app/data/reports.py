@@ -40,8 +40,27 @@ def _actual_scores(student_ids):
         return []
 
 
+def _baseline(institution_id):
+    try:
+        from ..extensions import db
+        from ..models import ReportSnapshot
+
+        snapshot = db.session.get(ReportSnapshot, institution_id)
+        if snapshot:
+            return {
+                "average": snapshot.average,
+                "attendance": snapshot.attendance,
+                "absences": snapshot.absences,
+                "trend": list(snapshot.performance_trend or []),
+                "absence_trend": list(snapshot.absence_trend or []),
+            }
+    except RuntimeError:
+        pass
+    return SCHOOL_BASELINES.get(institution_id, {"average": 0, "attendance": 0, "absences": 0, "trend": [0] * 7, "absence_trend": [0] * 7})
+
+
 def _metrics(institution_id, series_id=None, class_id=None):
-    baseline = SCHOOL_BASELINES.get(institution_id, SCHOOL_BASELINES["inst-004"])
+    baseline = _baseline(institution_id)
     scope_id = class_id or series_id or institution_id
     adjustment = ((_numeric_id(scope_id) % 5) - 2) * 0.12 if scope_id != institution_id else 0
     students = _records("alunos", instituicao_id=institution_id)
@@ -53,6 +72,12 @@ def _metrics(institution_id, series_id=None, class_id=None):
     if class_id:
         classes = [item for item in classes if item["id"] == class_id]
         students = [item for item in students if item["turma_id"] == class_id]
+
+    if not students:
+        return {
+            "average": 0, "attendance": 0, "absences": 0, "students": 0, "classes": len(classes),
+            "trend": [0] * len(MONTHS), "absence_trend": [0] * len(MONTHS), "has_actual_scores": False,
+        }
 
     actual_scores = _actual_scores([item["id"] for item in students])
     average = round(mean(actual_scores), 1) if actual_scores else round(baseline["average"] + adjustment, 1)
@@ -97,8 +122,10 @@ def class_report(institution, series, school_class):
     metrics = _metrics(institution["id"], series_id=series["id"], class_id=school_class["id"])
     students = []
     for student in _records("alunos", turma_id=school_class["id"]):
+        student_scores = _actual_scores([student["id"]])
         offset = ((_numeric_id(student["id"]) % 5) - 2) * .25
-        students.append({**student, "average": round(max(0, min(10, metrics["average"] + offset)), 1), "attendance": round(max(0, min(100, metrics["attendance"] - offset)), 1)})
+        student_average = round(mean(student_scores), 1) if student_scores else round(max(0, min(10, metrics["average"] + offset)), 1)
+        students.append({**student, "average": student_average, "attendance": round(max(0, min(100, metrics["attendance"] - offset)), 1)})
     students.sort(key=lambda item: (-item["average"], item["nome"]))
     return {**school_class, **metrics, "students_data": students}
 
