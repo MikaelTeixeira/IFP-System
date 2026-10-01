@@ -3,8 +3,8 @@
 {% from "macros/materials.html" import material_library %}
 {% block content %}
   <header class="page-header">
-    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Materiais de revisão</p><h1>Materiais de revisão</h1><p>Publique conteúdos para apoiar o estudo das suas turmas.</p></div>
-    <a class="button button--primary" href="{{ url_for('materials.create') }}">Publicar material</a>
+    <div><p class="breadcrumb"><a href="{{ url_for('core.dashboard') }}">Início</a> <span aria-hidden="true">/</span> Materiais de revisão</p><h1>Materiais de revisão</h1><p>{% if is_it_admin %}Gerencie as publicações de todos os professores.{% else %}Publique conteúdos para apoiar o estudo das suas turmas.{% endif %}</p></div>
+    <a class="button button--primary" href="{{ url_for('materials.create') }}">{% if is_it_admin %}Publicar pelo professor{% else %}Publicar material{% endif %}</a>
   </header>
   {% if materials %}
     {{ material_library(material_groups, true) }}

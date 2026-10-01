@@ -106,6 +106,29 @@ def add_subject(nome, escopo, instituicao_id, criado_por):
     return persist_subject(subject)
 
 
+def update_subject(subject_id, values):
+    subject = find_subject(subject_id)
+    if subject:
+        subject.update(values)
+        persist_subject(subject)
+    return subject
+
+
+def delete_subject(subject_id):
+    subject = find_subject(subject_id)
+    if subject:
+        SUBJECTS.remove(subject)
+        if _database_active():
+            from ..extensions import db
+            from ..models import Subject
+
+            model = db.session.get(Subject, subject_id)
+            if model:
+                db.session.delete(model)
+                db.session.commit()
+    return subject
+
+
 def add_topic(nome, subject_id, criado_por=""):
     sequence = max([int(item["id"].split("-")[-1]) for item in TOPICS] or [0]) + 1
     topic = {"id": f"ass-{sequence:03d}", "nome": nome, "materia_id": subject_id, "status": "Ativo", "criado_por": criado_por}

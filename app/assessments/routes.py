@@ -10,6 +10,7 @@ from ..data.assessments import (
     ASSESSMENT_REQUESTS,
     add_assessment,
     add_assessment_request,
+    delete_assessment,
     find_assessment,
     find_assessment_request,
     find_request_assignment,
@@ -29,9 +30,9 @@ from ..extensions import db
 from ..models import AssessmentAttempt
 
 
-ACCESS_ROLES = {"school_coordinator", "institute_coordinator"}
-MANAGE_ROLES = {"institute_coordinator"}
-SCHEDULE_ROLES = {"institute_coordinator"}
+ACCESS_ROLES = {"school_coordinator", "institute_coordinator", "it_admin"}
+MANAGE_ROLES = {"institute_coordinator", "it_admin"}
+SCHEDULE_ROLES = {"institute_coordinator", "it_admin"}
 
 
 def ensure_access(manage=False):
@@ -42,7 +43,7 @@ def ensure_access(manage=False):
 
 
 def assessment_in_scope(profile, assessment):
-    return profile["key"] == "institute_coordinator" or profile.get("institution_id") in assessment.get("instituicao_ids", [])
+    return profile["key"] in {"institute_coordinator", "it_admin"} or profile.get("institution_id") in assessment.get("instituicao_ids", [])
 
 
 def assessment_values(form, current=None):
@@ -67,7 +68,7 @@ def assessment_values(form, current=None):
 
 
 def request_in_scope(profile, assessment_request):
-    return profile["key"] == "institute_coordinator" or profile.get("institution_id") == assessment_request["instituicao_id"]
+    return profile["key"] in {"institute_coordinator", "it_admin"} or profile.get("institution_id") == assessment_request["instituicao_id"]
 
 
 def request_form_options(profile):
@@ -549,7 +550,7 @@ def detail(assessment_id):
         abort(403)
     questions = [find_question(question_id) for question_id in assessment["question_ids"] if find_question(question_id)]
     institutions = [item for item in DATA["instituicoes"] if item["id"] in assessment["instituicao_ids"]]
-    return render_template("assessments/detail.html", page_title=assessment["titulo"], assessment=assessment, questions=questions, institutions=institutions, can_manage=profile["key"] in MANAGE_ROLES, can_schedule=profile["key"] in SCHEDULE_ROLES, can_publish=profile["key"] in MANAGE_ROLES, active_navigation="simulados")
+    return render_template("assessments/detail.html", page_title=assessment["titulo"], assessment=assessment, questions=questions, institutions=institutions, can_manage=profile["key"] in MANAGE_ROLES, can_schedule=profile["key"] in SCHEDULE_ROLES, can_publish=profile["key"] in MANAGE_ROLES, can_delete=profile["key"] == "it_admin", active_navigation="simulados")
 
 
 @assessments_bp.route("/novo", methods=["GET", "POST"])
@@ -577,6 +578,24 @@ def edit(assessment_id):
         flash("Simulado atualizado no banco de dados.", "success")
         return redirect(url_for("assessments.detail", assessment_id=assessment_id))
     return render_template("assessments/form.html", page_title="Editar simulado", assessment=assessment, questions=QUESTIONS, institutions=DATA["instituicoes"], active_navigation="simulados")
+
+
+@assessments_bp.post("/<assessment_id>/excluir")
+@login_required
+def delete(assessment_id):
+    profile = current_profile()
+    if profile["key"] != "it_admin":
+        abort(403)
+    assessment = find_assessment(assessment_id)
+    if not assessment:
+        abort(404)
+    linked_request = any(item.get("assessment_id") == assessment_id for item in ASSESSMENT_REQUESTS)
+    if linked_request or AssessmentAttempt.query.filter_by(assessment_id=assessment_id).first():
+        flash("O simulado possui solicitação ou tentativa vinculada e não pode ser excluído.", "danger")
+        return redirect(url_for("assessments.detail", assessment_id=assessment_id))
+    delete_assessment(assessment_id)
+    flash("Simulado excluído pelo T.I.", "success")
+    return redirect(url_for("assessments.list_assessments"))
 
 
 @assessments_bp.post("/<assessment_id>/publicar")

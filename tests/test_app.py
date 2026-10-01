@@ -382,11 +382,143 @@ def test_question_bank_requires_subject_then_topic(client):
     assert "Qual é o resultado de 27 + 15?" in selected.get_data(as_text=True)
 
 
-def test_it_cannot_access_coordinator_content_modules(client):
+def test_it_can_access_all_content_management_modules(client):
     login_as(client, "it_admin")
-    assert client.get("/questoes").status_code == 403
-    assert client.get("/simulados").status_code == 403
-    assert client.get("/curriculo").status_code == 403
+    dashboard = client.get("/inicio").get_data(as_text=True)
+    assert client.get("/questoes").status_code == 200
+    assert client.get("/simulados").status_code == 200
+    assert client.get("/curriculo").status_code == 200
+    assert client.get("/materiais/").status_code == 200
+    assert client.post("/questoes/que-001/iniciar-revisao").status_code == 403
+    assert "Banco de questões" in dashboard
+    assert "Materiais de revisão" in dashboard
+
+
+def test_it_can_edit_and_delete_unlinked_academic_record(client):
+    from app.data.academic import DATA, find
+
+    login_as(client, "it_admin")
+    created = client.post("/academico/municipios/novo", data={
+        "nome": "Pacatuba", "uf": "CE", "codigo": "2309706",
+    })
+    assert created.status_code == 302
+    municipality = next(item for item in DATA["municipios"] if item["nome"] == "Pacatuba")
+    edited = client.post(f"/academico/municipios/{municipality['id']}/editar", data={
+        "nome": "Pacatuba Atualizada", "uf": "CE", "codigo": "2309706",
+    })
+    assert edited.status_code == 302
+    assert find("municipios", municipality["id"])["nome"] == "Pacatuba Atualizada"
+    detail = client.get(f"/academico/municipios/{municipality['id']}").get_data(as_text=True)
+    assert "data-admin-delete" in detail
+    deleted = client.post(f"/academico/municipios/{municipality['id']}/excluir", follow_redirects=True)
+    assert deleted.status_code == 200
+    assert find("municipios", municipality["id"]) is None
+    assert "excluído pelo T.I." in deleted.get_data(as_text=True)
+
+
+def test_it_cannot_delete_academic_record_with_dependencies(client):
+    from app.data.academic import find
+
+    login_as(client, "it_admin")
+    response = client.post("/academico/municipios/mun-001/excluir", follow_redirects=True)
+    assert response.status_code == 200
+    assert find("municipios", "mun-001") is not None
+    assert "instituições ou usuários vinculados" in response.get_data(as_text=True)
+
+
+def test_it_manages_curriculum_questions_and_assessments(client):
+    from app.data.assessments import ASSESSMENTS
+    from app.data.curriculum import SUBJECTS, find_subject
+    from app.data.questions import QUESTIONS, find_question
+
+    login_as(client, "it_admin")
+    created_subject = client.post("/curriculo/materias/nova", data={
+        "nome": "Tecnologia educacional", "escopo": "global",
+    })
+    assert created_subject.status_code == 302
+    subject = next(item for item in SUBJECTS if item["nome"] == "Tecnologia educacional")
+    edited_subject = client.post(f"/curriculo/materias/{subject['id']}/editar", data={
+        "nome": "Tecnologia aplicada", "escopo": "instituicao", "instituicao_id": "inst-002",
+    })
+    assert edited_subject.status_code == 302
+    assert find_subject(subject["id"])["instituicao_id"] == "inst-002"
+    deleted_subject = client.post(f"/curriculo/materias/{subject['id']}/excluir")
+    assert deleted_subject.status_code == 302
+    assert find_subject(subject["id"]) is None
+
+    created_question = client.post("/questoes/nova", data={
+        "materia_id": "mat-001", "assunto_id": "ass-001", "autor_id": "pro-001",
+        "instituicao_id": "inst-001", "tipo": "objetiva", "operacao": "Soma", "dificuldade": "Fácil",
+        "enunciado": "Quanto é 13 + 9?", "alternativa_a": "20", "alternativa_b": "21",
+        "alternativa_c": "22", "alternativa_d": "23", "gabarito": "C", "explicacao": "13 + 9 = 22.",
+    })
+    assert created_question.status_code == 302
+    question = next(item for item in QUESTIONS if item["enunciado"] == "Quanto é 13 + 9?")
+    edited_question = client.post(f"/questoes/{question['id']}/editar", data={
+        "materia_id": "mat-001", "assunto_id": "ass-001", "autor_id": "pro-001",
+        "instituicao_id": "inst-001", "tipo": "objetiva", "operacao": "Soma", "dificuldade": "Fácil",
+        "enunciado": "Quanto é 13 + 10?", "alternativa_a": "20", "alternativa_b": "21",
+        "alternativa_c": "22", "alternativa_d": "23", "gabarito": "D", "explicacao": "13 + 10 = 23.",
+    })
+    assert edited_question.status_code == 302
+    assert find_question(question["id"])["enunciado"] == "Quanto é 13 + 10?"
+    assert client.post(f"/questoes/{question['id']}/excluir").status_code == 302
+    assert find_question(question["id"]) is None
+
+    created_assessment = client.post("/simulados/novo", data={
+        "titulo": "Simulado administrativo", "modalidade": "Remoto", "publico": "8º ano",
+        "duracao": "25", "data": "15/11/2026", "descricao": "Cadastro temporário.",
+        "institution_ids": "inst-002", "tentativa_unica": "1",
+    })
+    assert created_assessment.status_code == 302
+    assessment = next(item for item in ASSESSMENTS if item["titulo"] == "Simulado administrativo")
+    edited_assessment = client.post(f"/simulados/{assessment['id']}/editar", data={
+        "titulo": "Simulado administrativo atualizado", "modalidade": "Presencial", "publico": "8º ano",
+        "duracao": "30", "data": "16/11/2026", "descricao": "Cadastro revisado.",
+        "institution_ids": "inst-002", "tentativa_unica": "1",
+    })
+    assert edited_assessment.status_code == 302
+    assert assessment["titulo"] == "Simulado administrativo atualizado"
+    assert client.post(f"/simulados/{assessment['id']}/excluir").status_code == 302
+    assert assessment not in ASSESSMENTS
+
+
+def test_it_manages_materials_and_user_accounts(client):
+    from app.data.materials import MATERIAL_POSTS
+    from app.data.users import find_user, list_users
+
+    login_as(client, "it_admin")
+    created_material = client.post("/materiais/novo", data={
+        "professor_id": "pro-001", "titulo": "Material administrativo",
+        "descricao": "Publicação em nome do professor.", "materia_id": "mat-001",
+        "assunto_id": "ass-001", "turma_ids": "tur-001", "texto": "Conteúdo para revisão.",
+    })
+    assert created_material.status_code == 302
+    material = next(item for item in MATERIAL_POSTS if item["titulo"] == "Material administrativo")
+    edited_material = client.post(f"/materiais/{material['id']}/editar", data={
+        "professor_id": "pro-001", "titulo": "Material administrativo atualizado",
+        "descricao": "Publicação revisada.", "materia_id": "mat-001", "assunto_id": "ass-001",
+        "turma_ids": "tur-002", "texto": "Conteúdo atualizado.",
+    })
+    assert edited_material.status_code == 302
+    assert material["titulo"] == "Material administrativo atualizado"
+    assert client.post(f"/materiais/{material['id']}/excluir").status_code == 302
+    assert material not in MATERIAL_POSTS
+
+    created_user = client.post("/usuarios/novo", data={
+        "nome": "Gestora Temporária", "cpf": "47777777770", "email": "gestora.temp@ifp.edu.br",
+        "cargo": "school_coordinator", "instituicao_id": "inst-002",
+    })
+    assert created_user.status_code == 302
+    user = next(item for item in list_users() if item["email"] == "gestora.temp@ifp.edu.br")
+    edited_user = client.post(f"/usuarios/{user['id']}/editar", data={
+        "nome": "Gestora Atualizada", "cpf": "47777777770", "email": "gestora.atualizada@ifp.edu.br",
+        "instituicao_id": "inst-002",
+    })
+    assert edited_user.status_code == 302
+    assert find_user(user["id"])["nome"] == "Gestora Atualizada"
+    assert client.post(f"/usuarios/{user['id']}/excluir").status_code == 302
+    assert find_user(user["id"]) is None
 
 
 def test_teacher_creates_question_only_for_own_institution(client):

@@ -7,6 +7,9 @@
 .topic-management-list a:hover { background: var(--brand-navy-100); }
 .topic-management-list button { color: var(--state-danger); }
 .topic-management-list button:hover { background: var(--state-danger-soft); }
+.catalog-card__admin { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.catalog-card__admin > strong { margin-right: 4px; }
 @media (max-width: 600px) {
   .catalog-card .topic-management-list li { align-items: flex-start; flex-direction: column; }
+  .catalog-card__admin { align-items: stretch; justify-content: flex-start; width: 100%; }
 }

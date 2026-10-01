@@ -23,9 +23,10 @@ def teacher_record():
     return find("professores", current_profile()["teacher_id"])
 
 
-def teacher_posts():
-    teacher_id = current_profile()["teacher_id"]
-    return [item for item in MATERIAL_POSTS if item["professor_id"] == teacher_id]
+def profile_posts(profile):
+    if profile["key"] == "it_admin":
+        return list(MATERIAL_POSTS)
+    return [item for item in MATERIAL_POSTS if item["professor_id"] == profile["teacher_id"]]
 
 
 def enrich_material(material):
@@ -46,6 +47,16 @@ def material_form_options(teacher):
     return subjects, subject_ids, topics, classes
 
 
+def material_teacher(profile, material=None):
+    if profile["key"] == "teacher":
+        return teacher_record()
+    teacher_id = request.form.get("professor_id", "") if request.method == "POST" else request.args.get("professor_id", "")
+    teacher_id = teacher_id or (material.get("professor_id", "") if material else "")
+    if not teacher_id and DATA["professores"]:
+        teacher_id = DATA["professores"][0]["id"]
+    return find("professores", teacher_id)
+
+
 def uploaded_attachment(owner_id):
     uploaded = request.files.get("anexo")
     if not uploaded or not uploaded.filename:
@@ -64,24 +75,29 @@ def uploaded_attachment(owner_id):
 
 
 @materials_bp.get("/")
-@roles_required("teacher")
+@roles_required("teacher", "it_admin")
 def index():
-    materials = [enrich_material(item) for item in teacher_posts()]
+    profile = current_profile()
+    materials = [enrich_material(item) for item in profile_posts(profile)]
     return render_template(
         "materials/index.html",
         page_title="Materiais de revisão",
         materials=materials,
         material_groups=group_materials(materials),
+        is_it_admin=profile["key"] == "it_admin",
         active_navigation="materiais",
     )
 
 
 @materials_bp.route("/novo", methods=["GET", "POST"])
-@roles_required("teacher")
+@roles_required("teacher", "it_admin")
 def create():
-    teacher = teacher_record()
+    profile = current_profile()
+    teacher = material_teacher(profile)
+    if not teacher:
+        abort(400)
     subjects, subject_ids, topics, classes = material_form_options(teacher)
-    values = request.form
+    values = request.form if request.method == "POST" else {"professor_id": teacher["id"]}
     selected_classes = request.form.getlist("turma_ids")
     error = None
 
@@ -119,7 +135,7 @@ def create():
                 attachment, error = uploaded_attachment(material["id"])
                 if error:
                     delete_material(material["id"])
-                    return render_template("materials/form.html", page_title="Publicar material", subjects=subjects, topics=topics, classes=classes, values=values, selected_classes=selected_classes, material=None, error=error, active_navigation="materiais"), 400
+                    return render_template("materials/form.html", page_title="Publicar material", subjects=subjects, topics=topics, classes=classes, teachers=DATA["professores"], is_it_admin=profile["key"] == "it_admin", values=values, selected_classes=selected_classes, material=None, error=error, active_navigation="materiais"), 400
                 update_material(material["id"], {"anexo": attachment})
             for student in DATA["alunos"]:
                 if student["turma_id"] in selected_classes:
@@ -133,6 +149,8 @@ def create():
         subjects=subjects,
         topics=topics,
         classes=classes,
+        teachers=DATA["professores"],
+        is_it_admin=profile["key"] == "it_admin",
         values=values,
         selected_classes=selected_classes,
         material=None,
@@ -142,14 +160,17 @@ def create():
 
 
 @materials_bp.route("/<material_id>/editar", methods=["GET", "POST"])
-@roles_required("teacher")
+@roles_required("teacher", "it_admin")
 def edit(material_id):
-    teacher = teacher_record()
+    profile = current_profile()
     material = find_material(material_id)
     if not material:
         abort(404)
-    if material["professor_id"] != teacher["id"]:
+    if profile["key"] == "teacher" and material["professor_id"] != profile["teacher_id"]:
         abort(403)
+    teacher = find("professores", material["professor_id"])
+    if not teacher:
+        abort(400)
 
     subjects, subject_ids, topics, classes = material_form_options(teacher)
     values = request.form if request.method == "POST" else material
@@ -183,7 +204,7 @@ def edit(material_id):
             if attachment_present:
                 attachment, error = uploaded_attachment(material_id)
             if error:
-                return render_template("materials/form.html", page_title="Editar publicação", subjects=subjects, topics=topics, classes=classes, values=values, selected_classes=selected_classes, material=material, error=error, active_navigation="materiais"), 400
+                return render_template("materials/form.html", page_title="Editar publicação", subjects=subjects, topics=topics, classes=classes, teachers=DATA["professores"], is_it_admin=profile["key"] == "it_admin", values=values, selected_classes=selected_classes, material=material, error=error, active_navigation="materiais"), 400
             update_material(material_id, {
                 "titulo": title,
                 "descricao": description,
@@ -204,6 +225,8 @@ def edit(material_id):
         subjects=subjects,
         topics=topics,
         classes=classes,
+        teachers=DATA["professores"],
+        is_it_admin=profile["key"] == "it_admin",
         values=values,
         selected_classes=selected_classes,
         material=material,
@@ -213,12 +236,13 @@ def edit(material_id):
 
 
 @materials_bp.post("/<material_id>/excluir")
-@roles_required("teacher")
+@roles_required("teacher", "it_admin")
 def delete(material_id):
     material = find_material(material_id)
     if not material:
         abort(404)
-    if material["professor_id"] != current_profile()["teacher_id"]:
+    profile = current_profile()
+    if profile["key"] == "teacher" and material["professor_id"] != profile["teacher_id"]:
         abort(403)
     if material.get("anexo"):
         delete_stored_file(material["anexo"]["arquivo_id"])
@@ -228,7 +252,7 @@ def delete(material_id):
 
 
 @materials_bp.get("/<material_id>/anexo")
-@roles_required("student", "teacher")
+@roles_required("student", "teacher", "it_admin")
 def attachment(material_id):
     material = find_material(material_id)
     if not material or not material.get("anexo"):

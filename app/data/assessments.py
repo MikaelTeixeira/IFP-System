@@ -87,6 +87,21 @@ def update_assessment(assessment_id, values):
     return assessment
 
 
+def delete_assessment(assessment_id):
+    assessment = find_assessment(assessment_id)
+    if assessment:
+        ASSESSMENTS.remove(assessment)
+        if _database_active():
+            from ..extensions import db
+            from ..models import Assessment
+
+            model = db.session.get(Assessment, assessment_id)
+            if model:
+                db.session.delete(model)
+                db.session.commit()
+    return assessment
+
+
 def add_assessment_request(values):
     sequence = max([int(item["id"].split("-")[-1]) for item in ASSESSMENT_REQUESTS] or [0]) + 1
     assessment_request = {

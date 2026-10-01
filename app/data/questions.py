@@ -163,3 +163,19 @@ def update_question(question_id, values):
         question.update(values)
         persist_question(question)
     return question
+
+
+def delete_question(question_id):
+    question = find_question(question_id)
+    if question:
+        QUESTIONS.remove(question)
+        if _database_active():
+            from ..extensions import db
+            from ..models import Question, QuestionReviewEvent
+
+            QuestionReviewEvent.query.filter_by(question_id=question_id).delete()
+            model = db.session.get(Question, question_id)
+            if model:
+                db.session.delete(model)
+            db.session.commit()
+    return question

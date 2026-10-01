@@ -117,6 +117,38 @@ def toggle_record(entity, item_id):
     return record
 
 
+def delete_record(entity, item_id):
+    record = find(entity, item_id)
+    if not record:
+        return None
+    if has_app_context() and current_app.config.get("DATABASE_ENABLED", False):
+        from ..extensions import db
+        from ..models import (
+            GradeSeries, Institution, Municipality, Notification, SchoolClass,
+            Student, StudentAttendanceSummary, Teacher,
+        )
+
+        model_class = {
+            "municipios": Municipality,
+            "instituicoes": Institution,
+            "series": GradeSeries,
+            "turmas": SchoolClass,
+            "alunos": Student,
+            "professores": Teacher,
+        }[entity]
+        if entity == "alunos":
+            StudentAttendanceSummary.query.filter_by(student_id=item_id).delete()
+            Notification.query.filter_by(recipient_role="student", recipient_id=item_id).delete()
+        elif entity == "professores":
+            Notification.query.filter_by(recipient_role="teacher", recipient_id=item_id).delete()
+        model = db.session.get(model_class, item_id)
+        if model:
+            db.session.delete(model)
+        db.session.commit()
+    DATA[entity].remove(record)
+    return record
+
+
 def _persist_reference_record(entity, record):
     if not has_app_context() or not current_app.config.get("DATABASE_ENABLED", False):
         return

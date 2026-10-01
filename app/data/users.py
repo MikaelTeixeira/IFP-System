@@ -130,11 +130,86 @@ def toggle_user(user_id):
     return user
 
 
-def user_identity_conflict(cpf, email):
+def update_user(user_id, values):
     if database_active():
-        model = UserAccount.query.filter(or_(UserAccount.cpf == cpf, func.lower(UserAccount.email) == email.lower())).first()
+        model = db.session.get(UserAccount, user_id)
+        if not model:
+            return None
+        model.name = values["nome"]
+        model.cpf = values["cpf"]
+        model.email = values["email"]
+        model.municipality_id = values.get("municipio_id") or None
+        model.institution_id = values.get("instituicao_id") or None
+        from ..models import Student, Teacher
+
+        person = Student.query.filter_by(user_account_id=user_id).first()
+        if person:
+            person.name, person.cpf, person.email = model.name, model.cpf, model.email
+            person.institution_id = model.institution_id
+            school_class = next((item for item in DATA["turmas"] if item["id"] == person.class_id), None)
+            if school_class and school_class.get("instituicao_id") != model.institution_id:
+                person.class_id = None
+        teacher = Teacher.query.filter_by(user_account_id=user_id).first()
+        if teacher:
+            teacher.name, teacher.cpf, teacher.email = model.name, model.cpf, model.email
+            teacher.institution_id = model.institution_id
+            teacher.class_ids = [item for item in teacher.class_ids or [] if any(record["id"] == item and record["instituicao_id"] == model.institution_id for record in DATA["turmas"])]
+        db.session.commit()
+        user = model.to_record()
+        if person:
+            cached_person = find("alunos", person.id)
+            if cached_person:
+                cached_person.update(person.to_record())
+        if teacher:
+            cached_person = find("professores", teacher.id)
+            if cached_person:
+                cached_person.update(teacher.to_record())
+    else:
+        user = find_user(user_id)
+        if not user:
+            return None
+        user.update(values)
+    cached = next((item for item in USER_ACCOUNTS if item["id"] == user_id), None)
+    if cached:
+        cached.update(user)
+    return user
+
+
+def delete_user(user_id):
+    user = find_user(user_id)
+    if not user:
+        return None
+    if database_active():
+        from ..models import Student, Teacher
+
+        model = db.session.get(UserAccount, user_id)
+        student = Student.query.filter_by(user_account_id=user_id).first()
+        teacher = Teacher.query.filter_by(user_account_id=user_id).first()
+        if student:
+            student.user_account_id = None
+            student.status = "Inativa"
+        if teacher:
+            teacher.user_account_id = None
+            teacher.status = "Inativo"
+        if model:
+            db.session.delete(model)
+        db.session.commit()
+        if student and find("alunos", student.id):
+            find("alunos", student.id).update(student.to_record())
+        if teacher and find("professores", teacher.id):
+            find("professores", teacher.id).update(teacher.to_record())
+    USER_ACCOUNTS[:] = [item for item in USER_ACCOUNTS if item["id"] != user_id]
+    return user
+
+
+def user_identity_conflict(cpf, email, exclude_id=None):
+    if database_active():
+        query = UserAccount.query.filter(or_(UserAccount.cpf == cpf, func.lower(UserAccount.email) == email.lower()))
+        if exclude_id:
+            query = query.filter(UserAccount.id != exclude_id)
+        model = query.first()
         return model.to_record() if model else None
     return next((
         item for item in USER_ACCOUNTS
-        if item.get("cpf") == cpf or item.get("email", "").lower() == email.lower()
+        if item["id"] != exclude_id and (item.get("cpf") == cpf or item.get("email", "").lower() == email.lower())
     ), None)

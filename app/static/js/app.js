@@ -51,6 +51,13 @@ function updateTopicOptions(reset = false) {
 subjectSelect?.addEventListener("change", () => updateTopicOptions(true));
 updateTopicOptions();
 
+const materialTeacherSelect = document.querySelector("[data-material-teacher-select]");
+materialTeacherSelect?.addEventListener("change", () => {
+  const destination = new URL(materialTeacherSelect.dataset.materialTeacherUrl, window.location.origin);
+  destination.searchParams.set("professor_id", materialTeacherSelect.value);
+  window.location.assign(destination);
+});
+
 const municipalityFilter = document.querySelector("[data-municipality-filter]");
 const institutionFilter = document.querySelector("#instituicao_id");
 
@@ -253,6 +260,30 @@ materialDeleteConfirm?.addEventListener("click", () => {
   const form = document.createElement("form");
   form.method = "post";
   form.action = materialDeleteAction;
+  document.body.append(form);
+  form.submit();
+});
+
+const adminDeleteDialog = document.querySelector("[data-admin-delete-dialog]");
+const adminDeleteTitle = adminDeleteDialog?.querySelector("[data-admin-delete-title]");
+const adminDeleteMessage = adminDeleteDialog?.querySelector("[data-admin-delete-message]");
+const adminDeleteConfirm = adminDeleteDialog?.querySelector("[data-admin-delete-confirm]");
+let adminDeleteAction = "";
+
+document.querySelectorAll("[data-admin-delete]").forEach((button) => {
+  button.addEventListener("click", () => {
+    adminDeleteAction = button.dataset.adminDeleteAction;
+    if (adminDeleteTitle) adminDeleteTitle.textContent = `Excluir ${button.dataset.adminDeleteLabel}?`;
+    if (adminDeleteMessage) adminDeleteMessage.textContent = button.dataset.adminDeleteMessage || "Esta ação removerá o registro definitivamente.";
+    adminDeleteDialog?.showModal();
+  });
+});
+
+adminDeleteConfirm?.addEventListener("click", () => {
+  if (!adminDeleteAction) return;
+  const form = document.createElement("form");
+  form.method = "post";
+  form.action = adminDeleteAction;
   document.body.append(form);
   form.submit();
 });

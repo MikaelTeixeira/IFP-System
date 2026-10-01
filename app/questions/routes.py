@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 
 from . import questions_bp
 from ..auth.security import current_profile, login_required
-from ..data.questions import QUESTIONS, add_question, find_question, persist_question, update_question
+from ..data.questions import QUESTIONS, add_question, delete_question, find_question, persist_question, update_question
 from ..data.academic import DATA, find
 from ..data.curriculum import TOPICS, find_subject, find_topic, subjects_for_profile
 from ..storage import absolute_file_path, delete_stored_file, save_uploaded_file, stored_file
@@ -13,8 +13,8 @@ from ..data.notifications import add_role_notification
 from ..data.reviews import actor_identity, add_review_event, review_history
 
 
-ACCESS_ROLES = {"teacher", "school_coordinator", "institute_coordinator"}
-MANAGE_ROLES = {"teacher"}
+ACCESS_ROLES = {"teacher", "school_coordinator", "institute_coordinator", "it_admin"}
+MANAGE_ROLES = {"teacher", "it_admin"}
 REVIEW_ROLES = {"school_coordinator", "institute_coordinator"}
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 IMAGE_MIME_TYPES = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
@@ -29,7 +29,7 @@ def ensure_access(manage=False):
 
 
 def question_in_scope(profile, question):
-    if profile["key"] == "institute_coordinator":
+    if profile["key"] in {"institute_coordinator", "it_admin"}:
         return True
     if profile["key"] == "teacher":
         return question.get("autor_id") == profile.get("teacher_id")
@@ -60,6 +60,17 @@ def question_values(form, current=None):
     if not subject or materia_id not in allowed_subject_ids or not topic or topic["materia_id"] != materia_id:
         abort(400)
     profile = current_profile()
+    if profile["key"] == "it_admin":
+        author_id = form.get("autor_id", current.get("autor_id", ""))
+        institution_id = form.get("instituicao_id", current.get("instituicao_id", ""))
+        teacher = find("professores", author_id)
+        if not teacher or not institution_id or teacher.get("instituicao_id") != institution_id:
+            abort(400)
+        author_name = teacher["nome"]
+    else:
+        author_id = current.get("autor_id") or profile.get("teacher_id", "")
+        institution_id = profile_institution_id(profile) or form.get("instituicao_id", current.get("instituicao_id", ""))
+        author_name = current.get("autor") or profile["name"]
     return {
         "materia_id": materia_id,
         "assunto_id": assunto_id,
@@ -73,9 +84,9 @@ def question_values(form, current=None):
         "gabarito": form.get("gabarito", "A") if question_type == "objetiva" else "",
         "resposta_esperada": form.get("resposta_esperada", "").strip(),
         "explicacao": form.get("explicacao", "").strip(),
-        "autor": current.get("autor") or profile["name"],
-        "autor_id": current.get("autor_id") or profile.get("teacher_id", ""),
-        "instituicao_id": profile_institution_id(profile) or form.get("instituicao_id", current.get("instituicao_id", "")),
+        "autor": author_name,
+        "autor_id": author_id,
+        "instituicao_id": institution_id,
     }
 
 
@@ -104,13 +115,16 @@ def question_image(owner_id, current=None):
 def question_form_context(profile, question, error=None):
     subjects = subjects_for_profile(profile)
     institution_id = profile_institution_id(profile)
-    institutions = [item for item in DATA["instituicoes"] if item["id"] == institution_id]
+    is_it_admin = profile["key"] == "it_admin"
+    institutions = list(DATA["instituicoes"]) if is_it_admin else [item for item in DATA["instituicoes"] if item["id"] == institution_id]
     return {
         "question": question,
         "subjects": subjects,
         "topics": TOPICS,
         "institutions": institutions,
-        "fixed_institution": True,
+        "fixed_institution": not is_it_admin,
+        "authors": list(DATA["professores"]) if is_it_admin else [],
+        "is_it_admin": is_it_admin,
         "error": error,
         "active_navigation": "questoes",
     }
@@ -156,8 +170,8 @@ def list_questions():
         "questions/list.html",
         page_title="Banco de questões",
         records=records,
-        can_create=profile["key"] == "teacher",
-        can_edit=profile["key"] == "teacher",
+        can_create=profile["key"] in MANAGE_ROLES,
+        can_edit=profile["key"] in MANAGE_ROLES,
         can_request_revision=profile["key"] in REVIEW_ROLES,
         curriculum_label="Gerir assuntos" if profile["key"] == "teacher" else "Gerir matérias",
         subjects=subjects,
@@ -186,7 +200,8 @@ def detail(question_id):
         "questions/detail.html",
         page_title=f"Questão {question_id.split('-')[-1]}",
         question=question,
-        can_edit=profile["key"] == "teacher" and question_in_scope(profile, question),
+        can_edit=profile["key"] in MANAGE_ROLES and question_in_scope(profile, question),
+        can_delete=profile["key"] == "it_admin",
         can_request_revision=profile["key"] in REVIEW_ROLES,
         review_history=review_history(question_id),
         active_navigation="questoes",
@@ -239,7 +254,7 @@ def edit(question_id):
             values["imagem"] = question.get("imagem")
             return render_template("questions/form.html", page_title="Editar questão", **question_form_context(profile, values, str(error))), 400
         update_question(question_id, values)
-        if question.get("revisao_status") in {"Pendente", "Em revisão", "Revisão solicitada"}:
+        if profile["key"] == "teacher" and question.get("revisao_status") in {"Pendente", "Em revisão", "Revisão solicitada"}:
             question["revisao_status"] = "Revisada"
             question["revisao_respondida_em"] = datetime.now().strftime("%d/%m/%Y às %H:%M")
             add_review_event(question_id, "Revisada", "Questão atualizada pelo professor.")
@@ -253,6 +268,35 @@ def edit(question_id):
         flash("Questão atualizada no banco de dados.", "success")
         return redirect(url_for("questions.detail", question_id=question_id))
     return render_template("questions/form.html", page_title="Editar questão", **question_form_context(profile, question))
+
+
+@questions_bp.post("/<question_id>/excluir")
+@login_required
+def delete(question_id):
+    profile = current_profile()
+    if profile["key"] != "it_admin":
+        abort(403)
+    question = find_question(question_id)
+    if not question:
+        abort(404)
+    from ..data.assessments import ASSESSMENTS, ASSESSMENT_REQUESTS
+    from ..models import AttemptAnswer
+
+    in_assessment = any(question_id in item.get("question_ids", []) for item in ASSESSMENTS)
+    in_request = any(
+        submission.get("question_id") == question_id
+        for item in ASSESSMENT_REQUESTS
+        for assignment in item.get("atribuicoes", [])
+        for submission in assignment.get("entregas", [])
+    )
+    if in_assessment or in_request or AttemptAnswer.query.filter_by(question_id=question_id).first():
+        flash("A questão está vinculada a um simulado, solicitação ou tentativa e não pode ser excluída.", "danger")
+        return redirect(url_for("questions.detail", question_id=question_id))
+    if question.get("imagem"):
+        delete_stored_file(question["imagem"]["arquivo_id"])
+    delete_question(question_id)
+    flash("Questão excluída pelo T.I.", "success")
+    return redirect(url_for("questions.list_questions"))
 
 
 @questions_bp.post("/<question_id>/solicitar-revisao")
@@ -289,6 +333,8 @@ def request_revision(question_id):
 @login_required
 def start_revision(question_id):
     profile = ensure_access(manage=True)
+    if profile["key"] != "teacher":
+        abort(403)
     question = find_question(question_id)
     if not question or not question_in_scope(profile, question):
         abort(404 if not question else 403)

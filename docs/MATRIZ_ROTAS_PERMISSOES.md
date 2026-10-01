@@ -19,14 +19,14 @@
 | Alunos | Próprio | Consulta vinculada | Gerencia na própria | Gerencia | Gerencia |
 | Professores | Oculto | Próprio | Gerencia na própria | Gerencia | Gerencia |
 | Usuários do sistema | Oculto | Oculto | Oculto | Oculto | Gerencia |
-| Matérias | Oculto | Consulta as próprias | Gerencia na própria instituição | Gerencia globais | Oculto |
-| Assuntos | Oculto | Gerencia nas próprias matérias | Consulta | Gerencia globais | Oculto |
-| Banco de questões | Oculto | Cria e edita as próprias | Consulta e solicita revisão na própria instituição | Consulta todas e solicita revisão | Oculto |
+| Matérias | Oculto | Consulta as próprias | Gerencia na própria instituição | Gerencia globais | Gerencia todas |
+| Assuntos | Oculto | Gerencia nas próprias matérias | Consulta | Gerencia globais | Gerencia todos |
+| Banco de questões | Oculto | Cria e edita as próprias | Consulta e solicita revisão na própria instituição | Consulta todas e solicita revisão | Gerencia todas |
 | Revisão de questões | Oculto | Revisa as próprias solicitações | Solicita e aprova na própria instituição | Solicita e aprova em todo o instituto | Oculto |
-| Simulados administrativos | Oculto | Responde solicitações atribuídas | Solicita, avalia e agenda na própria instituição | Cria, edita, publica e consulta solicitações | Oculto |
+| Simulados administrativos | Oculto | Responde solicitações atribuídas | Solicita, avalia e agenda na própria instituição | Cria, edita, publica e consulta solicitações | Gerencia todos |
 | Meus simulados | Responde os liberados para sua instituição e ano | Oculto | Oculto | Oculto | Oculto |
 | Notificações de simulados | Consulta as próprias | Oculto | Envia ao agendar | Consulta | Oculto |
-| Materiais de revisão | Consulta os destinados à sua turma | Publica, edita e exclui os próprios | Oculto | Oculto | Oculto |
+| Materiais de revisão | Consulta os destinados à sua turma | Publica, edita e exclui os próprios | Oculto | Oculto | Gerencia todos |
 | Correção de respostas abertas | Consulta o próprio resultado | Corrige respostas das próprias questões | Consulta futura | Consulta futura | Oculto |
 | Transferir professor | Oculto | Oculto | Oculto | Entre instituições | Entre instituições |
 | Vínculos acadêmicos | Oculto | Consulta vinculada | Gerencia na própria | Gerencia | Gerencia |
@@ -62,7 +62,7 @@ fora do escopo exibirá uma página de acesso restrito com caminho para retornar
 - Ao transferir um professor, os vínculos de turma anteriores são removidos para
   impedir a permanência de relações com a instituição de origem.
 - O banco de questões aceita Professor e coordenações; simulados administrativos
-  continuam restritos aos dois perfis de coordenação.
+  também ficam disponíveis ao T.I. para manutenção administrativa.
 - O Professor cria questões nas próprias matérias e edita somente as questões de
   sua autoria.
 - Coordenadores não criam nem editam questões. Eles consultam o banco e enviam
@@ -85,6 +85,10 @@ fora do escopo exibirá uma página de acesso restrito com caminho para retornar
   nova tentativa é bloqueada quando o simulado estiver configurado como único.
 - O Professor corrige apenas respostas ligadas a questões de sua autoria.
 - Anexos e imagens exigem autenticação e vínculo autorizado antes do acesso.
+- O T.I. possui acesso administrativo a todos os cadastros que oferecem criação,
+  edição ou exclusão. Exclusões definitivas são bloqueadas quando o registro
+  ainda possui dependências, preservando simulados, tentativas, usuários e
+  vínculos acadêmicos.
 # Relatórios de desempenho
 
 | Rota | Professor | Coord. Colégio | Coord. Instituto | T.I. |

@@ -8,15 +8,17 @@ from ..data.curriculum import (
     TOPICS,
     add_subject,
     add_topic,
+    delete_subject,
     delete_topic,
     find_subject,
     find_topic,
     subjects_for_profile,
+    update_subject,
     update_topic,
 )
 
 
-CURRICULUM_ROLES = {"teacher", "school_coordinator", "institute_coordinator"}
+CURRICULUM_ROLES = {"teacher", "school_coordinator", "institute_coordinator", "it_admin"}
 
 
 def ensure_access():
@@ -27,7 +29,7 @@ def ensure_access():
 
 
 def subject_in_scope(profile, subject):
-    if profile["key"] == "institute_coordinator":
+    if profile["key"] in {"institute_coordinator", "it_admin"}:
         return True
     if profile["key"] == "teacher":
         return subject["id"] in {item["id"] for item in subjects_for_profile(profile)}
@@ -59,13 +61,15 @@ def index():
         item["instituicao"] = institution["nome"] if institution else "Todas as instituições"
         item["assuntos"] = [topic for topic in TOPICS if topic["materia_id"] == subject["id"]]
         item["can_manage_topics"] = subject_in_scope(profile, subject)
+        item["can_manage_subject"] = profile["key"] == "it_admin"
         subjects.append(item)
     return render_template(
         "curriculum/index.html",
         page_title="Matérias e assuntos",
         subjects=subjects,
         can_add_topic=any(item["can_manage_topics"] for item in subjects),
-        can_add_subject=profile["key"] in {"school_coordinator", "institute_coordinator"},
+        can_add_subject=profile["key"] in {"school_coordinator", "institute_coordinator", "it_admin"},
+        is_it_admin=profile["key"] == "it_admin",
         is_teacher=profile["key"] == "teacher",
         active_navigation="curriculo",
     )
@@ -88,6 +92,11 @@ def create_subject():
         elif profile["key"] == "institute_coordinator":
             escopo = "global"
             institution_id = ""
+        else:
+            escopo = request.form.get("escopo", "global")
+            institution_id = request.form.get("instituicao_id", "") if escopo == "instituicao" else ""
+            if escopo not in {"global", "instituicao"} or (escopo == "instituicao" and not any(item["id"] == institution_id for item in institutions)):
+                abort(400)
         subject = add_subject(nome, escopo, institution_id, profile["name"])
         flash(f"Matéria {subject['nome']} adicionada ao catálogo.", "success")
         return redirect(url_for("curriculum.index"))
@@ -98,6 +107,52 @@ def create_subject():
         fixed_scope="instituicao" if profile["key"] == "school_coordinator" else ("global" if profile["key"] == "institute_coordinator" else ""),
         active_navigation="curriculo",
     )
+
+
+@curriculum_bp.route("/materias/<subject_id>/editar", methods=["GET", "POST"])
+@login_required
+def edit_subject(subject_id):
+    profile = ensure_access()
+    if profile["key"] != "it_admin":
+        abort(403)
+    subject = find_subject(subject_id)
+    if not subject:
+        abort(404)
+    institutions = [enrich("instituicoes", item) for item in DATA["instituicoes"]]
+    if request.method == "POST":
+        nome = request.form.get("nome", "").strip()
+        escopo = request.form.get("escopo", "global")
+        institution_id = request.form.get("instituicao_id", "") if escopo == "instituicao" else ""
+        if not nome:
+            return render_template("curriculum/subject_form.html", page_title="Editar matéria", institutions=institutions, fixed_scope="", subject=subject, values=request.form, error="Informe o nome da matéria.", active_navigation="curriculo"), 400
+        if escopo not in {"global", "instituicao"} or (escopo == "instituicao" and not any(item["id"] == institution_id for item in institutions)):
+            abort(400)
+        update_subject(subject_id, {"nome": nome, "escopo": escopo, "instituicao_id": institution_id})
+        flash(f"Matéria {nome} atualizada.", "success")
+        return redirect(url_for("curriculum.index"))
+    return render_template("curriculum/subject_form.html", page_title="Editar matéria", institutions=institutions, fixed_scope="", subject=subject, values=subject, active_navigation="curriculo")
+
+
+@curriculum_bp.post("/materias/<subject_id>/excluir")
+@login_required
+def remove_subject(subject_id):
+    profile = ensure_access()
+    if profile["key"] != "it_admin":
+        abort(403)
+    subject = find_subject(subject_id)
+    if not subject:
+        abort(404)
+    from ..data.materials import MATERIAL_POSTS
+    from ..data.questions import QUESTIONS
+
+    used = any(item["materia_id"] == subject_id for item in TOPICS + QUESTIONS + MATERIAL_POSTS)
+    used = used or any(subject_id in item.get("disciplina_ids", []) for item in DATA["professores"])
+    if used:
+        flash("A matéria possui assuntos, questões, materiais ou professores vinculados e não pode ser excluída.", "danger")
+        return redirect(url_for("curriculum.index"))
+    delete_subject(subject_id)
+    flash(f"Matéria {subject['nome']} excluída.", "success")
+    return redirect(url_for("curriculum.index"))
 
 
 @curriculum_bp.route("/assuntos/novo", methods=["GET", "POST"])

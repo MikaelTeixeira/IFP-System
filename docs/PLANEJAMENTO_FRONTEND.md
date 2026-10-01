@@ -82,6 +82,9 @@ As regras já definidas para esta etapa são:
 - Ações totalmente indisponíveis para um perfil ficarão ocultas.
 - Ações condicionais permanecerão visíveis e desabilitadas, acompanhadas do
   motivo.
+- O Administrador/T.I. pode criar, editar e excluir os cadastros disponíveis no
+  sistema. Uma exclusão definitiva só é liberada quando não houver dependências
+  que comprometam outros registros.
 
 ## 6. Blocos de execução
 

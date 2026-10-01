@@ -9,6 +9,7 @@ from ..data.academic import (
     DATA,
     ENTITY_CONFIG,
     add_record,
+    delete_record,
     enrich,
     find,
     find_identity_conflict,
@@ -130,6 +131,61 @@ def relationship_error(entity, values):
     return None
 
 
+def deletion_blocker(entity, item_id):
+    from ..data.assessments import ASSESSMENTS, ASSESSMENT_REQUESTS
+    from ..data.materials import MATERIAL_POSTS
+    from ..data.questions import QUESTIONS
+    from ..data.users import list_users
+    from ..extensions import db
+    from ..models import AssessmentAttempt, AttemptAnswer, ReportSnapshot, StudentAttendanceSummary
+
+    if entity == "municipios":
+        if any(item.get("municipio_id") == item_id for item in DATA["instituicoes"] + list_users()):
+            return "possui instituições ou usuários vinculados"
+    elif entity == "instituicoes":
+        related = any(
+            item.get("instituicao_id") == item_id
+            for group in (DATA["series"], DATA["turmas"], DATA["alunos"], DATA["professores"], SUBJECTS, QUESTIONS, list_users())
+            for item in group
+        )
+        related = related or any(item_id in item.get("instituicao_ids", []) for item in ASSESSMENTS)
+        related = related or any(item.get("instituicao_id") == item_id for item in ASSESSMENT_REQUESTS)
+        related = related or db.session.get(ReportSnapshot, item_id) is not None
+        related = related or StudentAttendanceSummary.query.filter_by(institution_id=item_id).first() is not None
+        if related:
+            return "possui estrutura acadêmica, usuários ou avaliações vinculadas"
+    elif entity == "series":
+        related = any(item.get("serie_id") == item_id for item in DATA["turmas"])
+        related = related or any(item_id in item.get("serie_ids", []) for item in ASSESSMENTS + ASSESSMENT_REQUESTS)
+        if related:
+            return "possui turmas, solicitações ou simulados vinculados"
+    elif entity == "turmas":
+        related = any(item.get("turma_id") == item_id for item in DATA["alunos"])
+        related = related or any(item_id in item.get("turma_ids", []) for item in DATA["professores"] + MATERIAL_POSTS)
+        if related:
+            return "possui estudantes, professores ou materiais vinculados"
+    elif entity == "alunos":
+        record = find("alunos", item_id)
+        related = bool(record.get("_user_account_id"))
+        related = related or AssessmentAttempt.query.filter_by(student_id=item_id).first() is not None
+        if related:
+            return "possui acesso de usuário ou tentativas vinculadas; exclua primeiro o acesso quando aplicável"
+    elif entity == "professores":
+        record = find("professores", item_id)
+        related = bool(record.get("_user_account_id"))
+        related = related or any(item.get("autor_id") == item_id for item in QUESTIONS)
+        related = related or any(item.get("professor_id") == item_id for item in MATERIAL_POSTS)
+        related = related or any(
+            assignment.get("professor_id") == item_id
+            for assessment_request in ASSESSMENT_REQUESTS
+            for assignment in assessment_request.get("atribuicoes", [])
+        )
+        related = related or AttemptAnswer.query.filter_by(grader_id=item_id).first() is not None
+        if related:
+            return "possui acesso, questões, materiais, solicitações ou correções vinculadas"
+    return None
+
+
 def user_filter_options(profile):
     institutions = [enrich("instituicoes", item) for item in scoped_records(profile, "instituicoes")]
     municipality_ids = {item["municipio_id"] for item in institutions}
@@ -226,7 +282,7 @@ def detail(entity, item_id):
     active_navigation = entity
     if profile["key"] == "student" or (profile["key"] == "teacher" and entity == "professores"):
         active_navigation = "meu-cadastro"
-    return render_template("academic/detail.html", page_title=record["nome"], entity=entity, config=config, record=record, related=related, can_manage=can_manage(profile, entity), can_toggle=profile["key"] in {"institute_coordinator", "it_admin"}, can_transfer=entity == "professores" and profile["key"] in {"institute_coordinator", "it_admin"}, transfer_institutions=[enrich("instituicoes", item) for item in DATA["instituicoes"] if item["id"] != record.get("instituicao_id")], active_navigation=active_navigation)
+    return render_template("academic/detail.html", page_title=record["nome"], entity=entity, config=config, record=record, related=related, can_manage=can_manage(profile, entity), can_toggle=profile["key"] in {"institute_coordinator", "it_admin"}, can_delete=profile["key"] == "it_admin", can_transfer=entity == "professores" and profile["key"] in {"institute_coordinator", "it_admin"}, transfer_institutions=[enrich("instituicoes", item) for item in DATA["instituicoes"] if item["id"] != record.get("instituicao_id")], active_navigation=active_navigation)
 
 
 @academic_bp.route("/<entity>/<item_id>/editar", methods=["GET", "POST"])
@@ -283,3 +339,20 @@ def toggle(entity, item_id):
     record = toggle_record(entity, item_id)
     flash(f"Situação de {record['nome']} alterada para {record['status']}.", "success")
     return redirect(request.referrer or url_for("academic.list_entities", entity=entity))
+
+
+@academic_bp.post("/<entity>/<item_id>/excluir")
+@login_required
+def delete(entity, item_id):
+    config = entity_or_404(entity)
+    profile = ensure_access(entity, item_id=item_id)
+    if profile["key"] != "it_admin":
+        abort(403)
+    record = find(entity, item_id)
+    blocker = deletion_blocker(entity, item_id)
+    if blocker:
+        flash(f"{config['singular']} não pode ser excluído porque {blocker}.", "danger")
+        return redirect(url_for("academic.detail", entity=entity, item_id=item_id))
+    delete_record(entity, item_id)
+    flash(f"{config['singular']} {record['nome']} excluído pelo T.I.", "success")
+    return redirect(url_for("academic.list_entities", entity=entity))

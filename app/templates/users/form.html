@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% from "macros/ui.html" import alert %}
 {% block content %}
-  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('users.index') }}">Usuários</a> <span aria-hidden="true">/</span> Novo usuário</p><h1>Adicionar usuário</h1><p>Crie um acesso demonstrativo e defina seu cargo e vínculo.</p></div></header>
-  {% if error %}{{ alert("Não foi possível adicionar", error, "danger") }}{% endif %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('users.index') }}">Usuários</a> <span aria-hidden="true">/</span> {{ page_title }}</p><h1>{{ page_title }}</h1><p>{% if user %}Atualize os dados de acesso e o vínculo institucional.{% else %}Crie um acesso demonstrativo e defina seu cargo e vínculo.{% endif %}</p></div></header>
+  {% if error %}{{ alert("Não foi possível salvar", error, "danger") }}{% endif %}
   <form class="edit-form" method="post"><div class="edit-form__fields">
     <div class="field"><label for="nome">Nome</label><input id="nome" name="nome" value="{{ values.get('nome', '') }}" required></div>
     <div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" value="{{ values.get('email', '') }}" required></div>
     <div class="field"><label for="cpf">CPF <span>(usado somente para evitar duplicidade)</span></label><input id="cpf" name="cpf" value="{{ values.get('cpf', '') }}" required></div>
-    <div class="field"><label for="cargo">Cargo</label><select id="cargo" name="cargo" required><option value="">Selecione</option>{% for value, label in roles.items() %}<option value="{{ value }}"{% if values.get('cargo') == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="cargo">Cargo</label><select id="cargo" name="cargo"{% if user %} disabled{% endif %} required><option value="">Selecione</option>{% for value, label in roles.items() %}<option value="{{ value }}"{% if values.get('cargo') == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% if user %}<input type="hidden" name="cargo" value="{{ user.cargo }}"><small>O cargo é preservado para manter os vínculos do perfil.</small>{% endif %}</div>
     <div class="field"><label for="municipio_id">Município</label><select id="municipio_id" name="municipio_id" data-municipality-filter><option value="">Abrangência geral</option>{% for municipality in municipalities %}<option value="{{ municipality.id }}"{% if values.get('municipio_id') == municipality.id %} selected{% endif %}>{{ municipality.nome }}</option>{% endfor %}</select></div>
     <div class="field"><label for="instituicao_id">Instituição</label><select id="instituicao_id" name="instituicao_id"><option value="">Instituto</option>{% for institution in institutions %}<option value="{{ institution.id }}" data-municipality="{{ institution.municipio_id }}"{% if values.get('instituicao_id') == institution.id %} selected{% endif %}>{{ institution.nome }}</option>{% endfor %}</select><small>Obrigatória para aluno, professor e coordenador do colégio.</small></div>
-  </div><div class="form-actions"><a class="button button--secondary" href="{{ url_for('users.index') }}">Cancelar</a><button class="button button--primary" type="submit">Adicionar usuário</button></div></form>
+  </div><div class="form-actions"><a class="button button--secondary" href="{{ url_for('users.index') }}">Cancelar</a><button class="button button--primary" type="submit">{% if user %}Salvar alterações{% else %}Adicionar usuário{% endif %}</button></div></form>
 {% endblock %}

@@ -710,3 +710,19 @@ administrativa do MySQL instalado na máquina.
   automática quando o dispositivo solicita redução de movimento.
 - A disposição foi conferida no navegador em tela compacta, inclusive durante a
   seleção de respostas, e a suíte terminou com **71 testes aprovados**.
+
+# 1º de outubro de 2026 - Administração integral pelo T.I.
+
+- O painel e o menu do T.I. passaram a reunir estrutura acadêmica, usuários,
+  matérias, assuntos, banco de questões, simulados e materiais de revisão.
+- O perfil pode criar e editar conteúdos em nome da instituição ou do professor
+  responsável, preservando a autoria exibida aos demais perfis.
+- Foram acrescentadas exclusões administrativas para usuários, matérias,
+  questões, simulados e registros acadêmicos, sempre com o diálogo visual do
+  sistema.
+- Registros com dependências não são apagados: a interface informa o vínculo que
+  precisa ser resolvido antes de tentar novamente.
+- A edição de usuário mantém a verificação de CPF e e-mail sem considerar o
+  próprio registro como duplicado.
+- A suíte completa terminou com **75 testes aprovados**, incluindo os novos
+  fluxos administrativos e os bloqueios de integridade.

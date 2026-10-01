@@ -42,12 +42,15 @@ def build_navigation(profile):
             {"key": "alunos", "label": "Alunos", "url": url_for("academic.list_entities", entity="alunos"), "icon": "people", "group": "Rede escolar"},
             {"key": "professores", "label": "Professores", "url": url_for("academic.list_entities", entity="professores"), "icon": "person", "group": "Rede escolar"},
         ])
-        if role in {"school_coordinator", "institute_coordinator"}:
+        if role in {"school_coordinator", "institute_coordinator", "it_admin"}:
             items.extend([
                 {"key": "curriculo", "label": "Matérias e assuntos", "url": url_for("curriculum.index"), "icon": "curriculum", "group": "Avaliações"},
                 {"key": "questoes", "label": "Banco de questões", "url": url_for("questions.list_questions"), "icon": "questions", "group": "Avaliações"},
                 {"key": "simulados", "label": "Solicitar simulado" if role == "school_coordinator" else "Simulados", "url": url_for("assessments.list_assessments"), "icon": "assessment", "group": "Avaliações"},
             ])
     if role == "it_admin":
-        items.append({"key": "usuarios", "label": "Usuários", "url": url_for("users.index"), "icon": "people", "group": "Administração"})
+        items.extend([
+            {"key": "materiais", "label": "Materiais de revisão", "url": url_for("materials.index"), "icon": "curriculum", "group": "Avaliações"},
+            {"key": "usuarios", "label": "Usuários", "url": url_for("users.index"), "icon": "people", "group": "Administração"},
+        ])
     return items

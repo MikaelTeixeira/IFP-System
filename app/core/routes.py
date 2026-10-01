@@ -42,7 +42,13 @@ def dashboard():
     elif role == "institute_coordinator":
         summary = [("Relatório das escolas", str(len(DATA["instituicoes"])), "reports.index", {}), ("Instituições", str(len(DATA["instituicoes"])), "academic.list_entities", {"entity": "instituicoes"}), ("Banco de questões", str(len(QUESTIONS)), "questions.list_questions", {}), ("Simulados", str(len(ASSESSMENTS)), "assessments.list_assessments", {})]
     else:
-        summary = [("Usuários", str(len(list_users())), "users.index", {}), ("Instituições", str(len(DATA["instituicoes"])), "academic.list_entities", {"entity": "instituicoes"})]
+        summary = [
+            ("Usuários", str(len(list_users())), "users.index", {}),
+            ("Instituições", str(len(DATA["instituicoes"])), "academic.list_entities", {"entity": "instituicoes"}),
+            ("Banco de questões", str(len(QUESTIONS)), "questions.list_questions", {}),
+            ("Simulados", str(len(ASSESSMENTS)), "assessments.list_assessments", {}),
+            ("Materiais de revisão", str(len(MATERIAL_POSTS)), "materials.index", {}),
+        ]
     return render_template("dashboard/index.html", page_title=f"Olá, {profile['name'].split()[0]}", page_description=profile["description"], summary=summary, active_navigation="inicio")
 
 
