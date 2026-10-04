@@ -332,3 +332,54 @@ class AttemptAnswer(db.Model):
     graded_at = db.Column(db.DateTime, nullable=True)
     grader_id = db.Column(db.String(36), nullable=True)
     attempt = db.relationship("AssessmentAttempt", back_populates="answers")
+
+
+class AnswerSheet(db.Model):
+    __tablename__ = "answer_sheets"
+
+    id = db.Column(db.String(36), primary_key=True)
+    assessment_id = db.Column(db.String(36), nullable=False, index=True)
+    student_id = db.Column(db.String(36), nullable=False, index=True)
+    template_version = db.Column(db.String(40), nullable=False, default="A4-20-v2")
+    snapshot = db.Column(db.JSON, nullable=True)
+    token_digest = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    status = db.Column(db.String(30), nullable=False, default="Emitido", index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None))
+
+
+class AnswerScanBatch(db.Model):
+    __tablename__ = "answer_scan_batches"
+
+    id = db.Column(db.String(36), primary_key=True)
+    assessment_id = db.Column(db.String(36), nullable=False, index=True)
+    original_name = db.Column(db.String(255), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default="Processando", index=True)
+    page_count = db.Column(db.Integer, nullable=False, default=0)
+    processed_count = db.Column(db.Integer, nullable=False, default=0)
+    review_count = db.Column(db.Integer, nullable=False, default=0)
+    failed_count = db.Column(db.Integer, nullable=False, default=0)
+    created_by_role = db.Column(db.String(40), nullable=False)
+    created_by_id = db.Column(db.String(36), nullable=False)
+    scope = db.Column(db.JSON, nullable=True)
+    error_message = db.Column(db.String(300), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None), index=True)
+    pages = db.relationship("AnswerScanPage", back_populates="batch", cascade="all, delete-orphan", lazy="selectin")
+
+
+class AnswerScanPage(db.Model):
+    __tablename__ = "answer_scan_pages"
+    __table_args__ = (db.UniqueConstraint("batch_id", "page_number", name="uq_scan_batch_page"),)
+
+    id = db.Column(db.String(36), primary_key=True)
+    batch_id = db.Column(db.String(36), db.ForeignKey("answer_scan_batches.id", ondelete="CASCADE"), nullable=False, index=True)
+    page_number = db.Column(db.Integer, nullable=False)
+    answer_sheet_id = db.Column(db.String(36), nullable=True, index=True)
+    student_id = db.Column(db.String(36), nullable=True, index=True)
+    status = db.Column(db.String(30), nullable=False, index=True)
+    image_path = db.Column(db.String(500), nullable=False)
+    detected_answers = db.Column(db.JSON, nullable=False, default=dict)
+    confidence = db.Column(db.Float, nullable=False, default=0)
+    issue = db.Column(db.String(300), nullable=False, default="")
+    analysis = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None))
+    batch = db.relationship("AnswerScanBatch", back_populates="pages")

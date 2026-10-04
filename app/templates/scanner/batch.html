@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import status_tag %}
+{% block content %}
+  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('scanner.index', assessment_id=assessment.id, **batch.scope) }}">Cartões-resposta</a> <span aria-hidden="true">/</span> Lote</p><div class="title-with-status"><h1>{{ batch.original_name }}</h1>{{ status_tag(batch.status, 'success' if batch.status == 'Concluído' else 'warning') }}</div><p>{{ assessment.titulo }} · {{ batch.scope.series_name or 'Todas as séries' }}{% if batch.scope.school_year %} · {{ batch.scope.school_year }}{% endif %} · {{ batch.created_at }}</p></div><a class="button button--secondary" href="{{ url_for('scanner.index', assessment_id=assessment.id, **batch.scope) }}">Voltar</a></header>
+  {% if batch.error_message %}<div class="alert alert--danger"><span>!</span><p>{{ batch.error_message }}</p></div>{% endif %}
+  <section class="scan-stats"><div><span>Páginas</span><strong>{{ batch.page_count }}</strong></div><div><span>Lidas / conferidas</span><strong>{{ batch.processed_count }}</strong></div><div><span>Precisam de revisão</span><strong>{{ batch.review_count }}</strong></div><div><span>Não identificadas</span><strong>{{ batch.failed_count }}</strong></div></section>
+  <p class="scanner-note">A confiança mede a clareza da leitura, não a nota do aluno. As respostas ainda não foram importadas como resultado do simulado.</p>
+  <section class="scanner-section"><div class="section-heading"><div><h2>Conferência dos cartões</h2><p>Abra a imagem com as marcações destacadas ou confira as alternativas lado a lado.</p></div></div>
+    <div class="scan-page-list">{% for page in batch.pages %}<article class="scan-page-card">
+      <a class="scan-page-card__preview" href="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id, variant='reading') }}" target="_blank"><img loading="lazy" src="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id, variant='reading') }}" alt="Digitalização da página {{ page.page_number }}"></a>
+      <div class="scan-page-card__body"><div>{{ status_tag(page.status, 'success' if page.status in ['Lido', 'Conferido'] else 'warning') }}<span>Página {{ page.page_number }}</span></div><h3>{{ page.student.nome if page.student else 'Estudante não identificado' }}</h3><p>{{ 'Conferência manual registrada.' if page.status == 'Conferido' else (page.issue or 'Leitura concluída com boa qualidade.') }}</p>
+        <small>{{ 'Confiança da leitura original' if page.status == 'Conferido' else 'Confiança da questão menos nítida' }}: {{ (page.confidence * 100)|round|int }}%</small>
+        {% if page.detected_answers %}<div class="detected-answer-list">{% for number, answer in page.detected_answers.items() %}<span class="{% if not answer %}is-empty{% endif %}"><b>{{ number }}</b>{{ answer or '—' }}</span>{% endfor %}</div>{% endif %}
+        <div class="scan-page-actions"><a class="button button--small button--quiet" href="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id, variant='original') }}" target="_blank">Imagem original</a>{% if page.answer_sheet_id and page.status != 'Falha' %}<a class="button button--small button--secondary" href="{{ url_for('scanner.page_review', batch_id=batch.id, page_id=page.id) }}">Conferir respostas</a>{% endif %}</div>
+      </div>
+    </article>{% else %}<p>Nenhuma página pôde ser processada. Confira o arquivo e envie uma nova digitalização.</p>{% endfor %}</div>
+  </section>
+{% endblock %}

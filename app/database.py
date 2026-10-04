@@ -217,6 +217,7 @@ def _remove_orphan_file_records():
 
 def create_and_seed_database():
     db.create_all()
+    _upgrade_scanner_columns()
     if db.engine.dialect.name == "mysql":
         unique_names = {item.get("name") for item in inspect(db.engine).get_unique_constraints("assessment_attempts")}
         if "uq_attempt_assessment_student" in unique_names:
@@ -225,6 +226,24 @@ def create_and_seed_database():
     _seed_reference_data()
     _refresh_compatibility_data()
     _remove_orphan_file_records()
+
+
+def _upgrade_scanner_columns():
+    """Add nullable scanner metadata to databases created by the first MVP."""
+    from .models import AnswerSheet, AnswerScanBatch, AnswerScanPage
+
+    for model, names in (
+        (AnswerSheet, ("snapshot",)),
+        (AnswerScanBatch, ("scope", "error_message")),
+        (AnswerScanPage, ("analysis",)),
+    ):
+        table = model.__table__
+        existing = {column["name"] for column in inspect(db.engine).get_columns(table.name)}
+        for name in names:
+            if name not in existing:
+                column_type = table.c[name].type.compile(dialect=db.engine.dialect)
+                db.session.execute(text(f"ALTER TABLE {table.name} ADD COLUMN {name} {column_type} NULL"))
+    db.session.commit()
 
 
 def init_database(app):

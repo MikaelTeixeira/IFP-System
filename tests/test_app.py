@@ -102,6 +102,40 @@ def test_entry_redirects_to_login(client):
     assert response.headers["Location"].endswith("/acesso")
 
 
+def test_dashboard_works_without_persistent_database():
+    class DemoConfig(TestConfig):
+        DATABASE_ENABLED = False
+
+    demo_client = create_app(DemoConfig).test_client()
+    response = demo_client.post("/acesso/rapido/it_admin", follow_redirects=True)
+
+    assert response.status_code == 200
+    assert "Administrador/T.I." in response.get_data(as_text=True)
+
+
+def test_answer_sheet_area_is_restricted_to_coordinators(client):
+    login_as(client, "student")
+    assert client.get("/cartoes-resposta/").status_code == 403
+
+    login_as(client, "school_coordinator")
+    response = client.get("/cartoes-resposta/")
+    assert response.status_code == 200
+    assert "Correção de cartões-resposta" in response.get_data(as_text=True)
+
+
+def test_printable_answer_sheet_uses_opaque_qr_without_cpf(client):
+    from app.data.academic import DATA
+
+    login_as(client, "school_coordinator")
+    response = client.get("/cartoes-resposta/simulados/sim-2026-001/imprimir")
+    content = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Ana Clara Souza" in content
+    assert "data:image/png;base64," in content
+    assert DATA["alunos"][0]["cpf"] not in content
+
+
 def test_unread_notifications_use_a_visible_numeric_badge(client):
     from app.data.notifications import add_role_notification
 

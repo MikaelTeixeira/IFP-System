@@ -1,4 +1,8 @@
 Flask==3.1.2
 Flask-SQLAlchemy==3.1.1
+numpy==2.5.3
+opencv-python-headless==5.0.0.93
+pypdfium2==5.13.0
 PyMySQL==1.2.3
 SQLAlchemy==2.1.1
+zxing-cpp==3.1.1
