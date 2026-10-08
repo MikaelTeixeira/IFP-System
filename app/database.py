@@ -2,7 +2,7 @@ from pathlib import Path
 
 import click
 from flask import current_app
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 
 from .data.academic import DATA, INITIAL_DATA
 from .data.assessments import ASSESSMENTS, ASSESSMENT_REQUESTS, INITIAL_ASSESSMENTS
@@ -217,16 +217,42 @@ def _remove_orphan_file_records():
 
 def create_and_seed_database():
     db.create_all()
+<<<<<<< Updated upstream
     if db.engine.dialect.name == "mysql":
         unique_names = {item.get("name") for item in inspect(db.engine).get_unique_constraints("assessment_attempts")}
         if "uq_attempt_assessment_student" in unique_names:
             db.session.execute(text("ALTER TABLE assessment_attempts DROP INDEX uq_attempt_assessment_student"))
             db.session.commit()
+=======
+    if db.engine.dialect.name == "postgresql":
+        _close_data_api()
+>>>>>>> Stashed changes
     _seed_reference_data()
     _refresh_compatibility_data()
     _remove_orphan_file_records()
 
 
+<<<<<<< Updated upstream
+=======
+def _close_data_api():
+    """Keep the application tables out of the Supabase Data API.
+
+    Supabase publishes the public schema through PostgREST for the anon and
+    authenticated roles. RLS with no policies hides every row from them, and
+    revoking their table privileges removes what RLS does not cover (TRUNCATE).
+    The application connects as the table owner, which neither step restricts.
+    """
+    preparer = db.engine.dialect.identifier_preparer
+    api_roles = list(db.session.execute(text("SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated')")).scalars())
+    for table in db.metadata.sorted_tables:
+        name = preparer.format_table(table)
+        db.session.execute(text(f"ALTER TABLE {name} ENABLE ROW LEVEL SECURITY"))
+        if api_roles:
+            db.session.execute(text(f"REVOKE ALL ON TABLE {name} FROM {', '.join(api_roles)}"))
+    db.session.commit()
+
+
+>>>>>>> Stashed changes
 def init_database(app):
     db.init_app(app)
 
@@ -234,7 +260,7 @@ def init_database(app):
     def init_db_command():
         """Create the configured database tables and initial records."""
         if not current_app.config["DATABASE_ENABLED"]:
-            raise click.ClickException("Configure instance/mysql.env antes de inicializar o MySQL.")
+            raise click.ClickException("Configure instance/database.env antes de inicializar o banco.")
         create_and_seed_database()
         click.echo("Tabelas criadas e dados iniciais carregados.")
 
@@ -242,11 +268,11 @@ def init_database(app):
     def db_status_command():
         """Show whether persistent database storage is enabled."""
         if not current_app.config["DATABASE_ENABLED"]:
-            click.echo("Banco persistente desativado: configure instance/mysql.env.")
+            click.echo("Banco persistente desativado: configure instance/database.env.")
             return
         try:
             db.session.execute(db.select(Municipality).limit(1))
-            click.echo("MySQL conectado e respondendo.")
+            click.echo(f"Banco {db.engine.dialect.name} conectado e respondendo ({db.engine.url.host}).")
         except Exception as exc:
             raise click.ClickException(f"Falha na conexão: {exc}") from exc
 

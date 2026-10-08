@@ -1,15 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" color="#522304">
-  <title>Instituto Fabiana Pinto</title>
-  <circle cx="75" cy="75" r="75" fill="#B86122"/>
-  <g transform="translate(72.4 75.8) scale(1.18) translate(-72.4 -75.8)">
-    <g fill="none" stroke="#522304">
+{# Logo do Instituto Fabiana Pinto, vetorizada a partir da foto do perfil @institutofabianapinto.
+   Fonte única do desenho: os arquivos em static/images são gerados por scripts/gerar_icones.py.
+   Ao receber o arquivo oficial, troque os traços abaixo e rode o script novamente. #}
+
+{% macro brand_logo_shapes(background='circle', mark_scale=1) -%}
+  {%- if background == 'circle' %}<circle cx="75" cy="75" r="75" fill="#B86122"/>{% elif background == 'square' %}<rect width="150" height="150" fill="#B86122"/>{% endif %}
+  <g{% if mark_scale != 1 %} transform="translate(72.4 75.8) scale({{ mark_scale }}) translate(-72.4 -75.8)"{% endif %}>
+    <g fill="none" stroke="currentColor">
       <path class="brand-logo__line" stroke-width="4.6" d="M70 125.5V26" pathLength="1"/>
       <path class="brand-logo__line" stroke-width="4.6" d="M78.5 125.5V26" pathLength="1"/>
       <path class="brand-logo__line" stroke-width="4.2" d="M88.5 125.5V54.5" pathLength="1"/>
       <path class="brand-logo__bowl" stroke-width="5" d="M84.8 28.8H95.9a24.5 24.5 0 0 1 0 49H88.5" pathLength="1"/>
       <path class="brand-logo__bowl" stroke-width="4.6" d="M85 38.9H95.9a14.4 14.4 0 0 1 0 28.8H95.5q-7 0 -7 -7" pathLength="1"/>
     </g>
-    <g fill="#522304">
+    <g fill="currentColor">
       <circle class="brand-logo__cap" cx="88.5" cy="54.5" r="2.1"/>
       <circle class="brand-logo__sun" cx="44.5" cy="52.5" r="6.9"/>
       <path class="brand-logo__wave" d="M24.6 79.2L26.9 79.4 29.2 79.8 31.3 80.6 33.4 81.5 35.5 82.5 37.6 83.6 39.7 84.6 41.9 85.5 44.1 86.1 46.5 86.3 48.3 86.1 50.2 85.6 52 84.9 53.8 84 55.6 83 57.4 82 59 80.9 60.6 79.9 62 78.9 63.3 78A1.5 1.5 0 0 0 61.7 75.5L60.3 76.3 58.9 77.2 57.3 78.1 55.6 79 53.9 79.9 52.2 80.7 50.6 81.4 49.1 81.9 47.7 82.1 46.5 82.2 45 82 43.3 81.5 41.6 80.7 39.7 79.6 37.7 78.5 35.5 77.3 33.1 76.2 30.5 75.2 27.7 74.5 24.6 74.2A2.5 2.5 0 0 0 24.6 79.2Z"/>
@@ -18,4 +21,15 @@
       <path class="brand-logo__wave" d="M36.8 104.7L38 104.7 39.2 105 40.4 105.3 41.5 105.8 42.7 106.3 43.8 106.8 45 107.4 46.2 107.8 47.5 108.1 48.9 108.2 49.9 108.1 51 107.9 52 107.6 53.1 107.2 54.1 106.7 55.1 106.2 56.1 105.7 57 105.2 57.8 104.8 58.6 104.3A1.2 1.2 0 0 0 57.4 102.2L56.7 102.6 55.8 103 54.9 103.4 54 103.8 53.1 104.2 52.1 104.6 51.2 104.9 50.3 105.1 49.5 105.2 48.9 105.2 48.1 105.2 47.2 104.9 46.2 104.5 45.2 104 44.1 103.5 42.8 102.9 41.5 102.3 40.1 101.8 38.5 101.5 36.8 101.3A1.6 1.6 0 0 0 36.8 104.7Z"/>
     </g>
   </g>
+{%- endmacro %}
+
+{% macro brand_logo(class_name='brand-logo', background='circle') -%}
+  <svg class="{{ class_name }}" viewBox="0 0 150 150" color="#522304" aria-hidden="true" focusable="false">{{ brand_logo_shapes(background) }}</svg>
+{%- endmacro %}
+
+{% macro brand_logo_file(background='circle', mark_scale=1) -%}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" color="#522304">
+  <title>Instituto Fabiana Pinto</title>
+  {{ brand_logo_shapes(background, mark_scale) }}
 </svg>
+{%- endmacro %}

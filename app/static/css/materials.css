@@ -20,7 +20,7 @@
 .material-topic__header h3 { margin: 1px 0 0; color: var(--brand-navy-900); font-size: 1.05rem; }
 .material-topic__header b { color: var(--text-muted); font-size: .8rem; }
 .material-feed { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 370px), 1fr)); gap: 14px; padding: 14px; }
-.material-post { overflow: hidden; background: white; border: 1px solid var(--border-default); border-radius: var(--radius-medium); box-shadow: 0 3px 12px rgb(29 41 66 / 5%); }
+.material-post { overflow: hidden; background: white; border: 1px solid var(--border-default); border-radius: var(--radius-medium); box-shadow: 0 3px 12px rgb(30 40 60 / 5%); }
 .material-post__header { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--border-default); }
 .material-post__avatar { display: grid; width: 42px; height: 42px; place-items: center; color: white; background: var(--brand-navy-700); border-radius: 11px; font-size: .78rem; font-weight: 800; }
 .material-post__header h2, .material-post__header h3 { margin: 0; font-size: 1.15rem; }
@@ -35,13 +35,13 @@
 .material-attachment > div { display: grid; min-width: 0; }
 .material-attachment strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .material-attachment small { color: var(--text-muted); }
-.material-post footer { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 12px 22px; color: var(--text-muted); background: #fafbfc; border-top: 1px solid var(--border-default); font-size: .82rem; }
+.material-post footer { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 12px 22px; color: var(--text-muted); background: var(--surface-sunken); border-top: 1px solid var(--border-default); font-size: .82rem; }
 .material-post footer strong { padding: 3px 8px; color: var(--brand-navy-700); background: var(--brand-navy-100); border-radius: 99px; }
 .material-post__actions { display: flex; gap: 6px; margin-left: auto; }
 .button--danger-quiet { color: var(--state-danger); background: transparent; border-color: transparent; }
-.button--danger-quiet:hover { background: var(--state-danger-soft); border-color: #e0aaaa; }
+.button--danger-quiet:hover { background: var(--state-danger-soft); border-color: var(--state-danger-line); }
 .material-form__classes, .material-form__text, .material-form__attachment { grid-column: 1 / -1; }
-.material-form__classification { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: 18px; padding: 15px 17px; background: var(--surface-navy-soft); border: 1px solid #cbd2df; border-radius: var(--radius-small); }
+.material-form__classification { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: 18px; padding: 15px 17px; background: var(--surface-navy-soft); border: 1px solid var(--border-navy); border-radius: var(--radius-small); }
 .material-form__classification strong { color: var(--brand-navy-900); }
 .material-form__classification p { max-width: 68ch; margin: 3px 0 0; color: var(--text-muted); font-size: .88rem; }
 .material-form__classification a { flex: 0 0 auto; color: var(--brand-navy-700); font-size: .86rem; font-weight: 800; }
@@ -51,7 +51,7 @@
 .material-form__classes > div { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }
 .material-form__classes label { padding: 10px 13px; background: var(--surface-page); border: 1px solid var(--border-default); border-radius: var(--radius-small); cursor: pointer; }
 .material-form__classes label:has(input:checked) { background: var(--brand-orange-100); border-color: var(--brand-orange-500); }
-.material-form__attachment input { padding: 8px; background: var(--surface-page); border: 1px dashed #aeb7c6; }
+.material-form__attachment input { padding: 8px; background: var(--surface-page); border: 1px dashed var(--border-strong); }
 .material-form__current-file { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 10px; padding: 12px 14px; color: var(--text-primary); background: var(--brand-navy-100); border-radius: var(--radius-small); }
 .material-form__current-file > span:last-child { white-space: nowrap; }
 @media (max-width: 767px) {

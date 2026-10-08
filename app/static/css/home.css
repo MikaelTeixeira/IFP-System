@@ -1,0 +1,55 @@
+/* Banner da tela inicial, comum a todos os perfis. */
+.home-hero {
+  --hero-pad: clamp(28px, 5vw, 52px);
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 286px;
+  overflow: hidden;
+  margin-bottom: 34px;
+  padding: var(--hero-pad);
+  color: white;
+  background: var(--brand-navy-900);
+  border-radius: 20px;
+  box-shadow: 0 18px 42px rgb(30 40 60 / 18%);
+}
+/* The institute mark sits at the right edge; the icon bubble stays to its left without covering it.
+   The mark spans 22–122.6 of the 150-unit viewBox, so its right edge meets the hero padding. */
+.home-hero__mark { position: absolute; top: calc(50% - 140px); right: calc(var(--hero-pad) - 51px); width: 280px; aspect-ratio: 1; opacity: .22; }
+.home-hero__copy { position: relative; z-index: 1; align-self: center; max-width: 680px; }
+.home-hero__eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; color: var(--brand-orange-200); font-size: .78rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.home-hero__eyebrow > span { width: 8px; height: 8px; background: var(--brand-orange-500); border-radius: 50%; box-shadow: 0 0 0 5px rgb(184 97 34 / 18%); }
+.home-hero h1 { margin-bottom: 9px; color: white; font-size: clamp(2rem, 5vw, 3.25rem); letter-spacing: -.035em; }
+.home-hero__copy > p:not(.home-hero__eyebrow) { max-width: 58ch; margin-bottom: 24px; color: rgb(255 255 255 / 76%); font-size: 1.04rem; }
+.home-hero__action { gap: 8px; min-height: 48px; padding: 11px 18px; box-shadow: 0 7px 16px rgb(145 71 19 / 20%); transition: color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast); }
+.home-hero__action:hover { color: white; box-shadow: 0 10px 22px rgb(145 71 19 / 27%); transform: translateY(-2px); }
+.home-hero__action .ui-icon { width: 17px; height: 17px; transition: transform var(--transition-fast); }
+.home-hero__action:hover .ui-icon { transform: translateX(3px); }
+.home-hero__visual { position: relative; z-index: 1; display: grid; align-self: center; justify-self: end; width: 154px; height: 154px; margin-right: 210px; place-items: center; color: var(--brand-navy-900); background: var(--brand-sand-50); border: 10px solid rgb(255 255 255 / 15%); border-radius: 36% 64% 61% 39% / 43% 42% 58% 57%; box-shadow: 0 16px 28px rgb(8 16 32 / 26%); animation: home-hero-float 5s ease-in-out infinite; }
+.home-hero__visual > span .ui-icon { width: 62px; height: 62px; stroke-width: 1.4; }
+.home-hero__visual > i { position: absolute; right: -12px; bottom: 3px; padding: 7px 10px; color: white; background: var(--brand-orange-700); border: 4px solid var(--brand-navy-900); border-radius: 99px; font-size: .75rem; font-style: normal; font-weight: 900; }
+
+@keyframes home-hero-float {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .home-hero__mark { top: calc(50% - 110px); right: calc(var(--hero-pad) - 40px); width: 220px; }
+  .home-hero__visual { width: 118px; height: 118px; margin-right: 165px; border-width: 8px; }
+  .home-hero__visual > span .ui-icon { width: 46px; height: 46px; }
+  .home-hero__visual > i { right: -18px; bottom: -8px; padding: 5px 8px; border-width: 3px; font-size: .68rem; }
+}
+
+@media (max-width: 767px) {
+  .home-hero { grid-template-columns: 1fr; min-height: 0; padding: 28px 22px; }
+  .home-hero__visual { display: none; }
+  .home-hero__mark { top: -36px; right: -56px; width: 230px; opacity: .1; }
+  .home-hero__action { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hero__visual { animation: none; }
+  .home-hero__action, .home-hero__action .ui-icon { transition: none; }
+  .home-hero__action:hover, .home-hero__action:hover .ui-icon { transform: none; }
+}

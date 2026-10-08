@@ -1,7 +1,7 @@
 # Instituto Fabiana Pinto - Sistema de Avaliações
 
 Sistema funcional de aplicação, acompanhamento e análise de avaliações,
-construído com Flask e persistência local em MySQL.
+construído com Flask e persistência em PostgreSQL no Supabase (MySQL local como alternativa).
 
 ## Estado atual
 
@@ -25,7 +25,7 @@ perfis, estrutura acadêmica, banco de questões e gestão de simulados.
 - Filtros de alunos e professores por município e instituição.
 - Transferência de professores entre instituições para Coordenação do Instituto e T.I.
 - Gestão de usuários exclusiva para T.I., com filtros, ordenação, cadastro e desativação.
-- Persistência local MySQL para estrutura acadêmica, currículo, questões, simulados, solicitações, materiais, usuários, tentativas, arquivos, notificações e indicadores dos relatórios.
+- Persistência no Supabase (PostgreSQL) para estrutura acadêmica, currículo, questões, simulados, solicitações, materiais, usuários, tentativas, arquivos, notificações e indicadores dos relatórios.
 - Criação, composição, publicação e agendamento de simulados persistidos.
 - Fluxo de simulados conduzido pelo Coordenador do Colégio: solicitação com prazo, entrega pelos professores, aprovação ou revisão, agendamento e aviso aos alunos.
 - Professores podem responder com questões do próprio banco, do histórico de envios ou com uma questão nova.
@@ -33,7 +33,7 @@ perfis, estrutura acadêmica, banco de questões e gestão de simulados.
 - Histórico de revisão com estados Pendente, Em revisão, Revisada e Aprovada.
 - Tentativas, respostas, tempo restante, correções abertas e resultados persistidos no banco.
 - Correção de respostas abertas pelo professor com nota, conceito e comentário.
-- Anexos e imagens armazenados em pasta local controlada, com metadados no MySQL.
+- Anexos e imagens armazenados em pasta local controlada, com metadados no banco.
 - Notificações internas para solicitações, revisões, simulados, materiais e correções.
 - Simulado de teste com oito questões, distribuídas entre as quatro operações.
 - Alternativas do simulado exibidas verticalmente, de A a D.

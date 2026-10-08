@@ -1,5 +1,5 @@
 .catalog-card .topic-management-list { display: grid; gap: 0; padding: 0; }
-.catalog-card .topic-management-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 22px; background: #fafbfc; border-radius: 0; }
+.catalog-card .topic-management-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 22px; background: var(--surface-sunken); border-radius: 0; }
 .catalog-card .topic-management-list li + li { border-top: 1px solid var(--border-default); }
 .topic-management-list li > span { padding: 6px 10px; color: var(--brand-navy-900); background: var(--brand-navy-100); border-radius: 99px; font-size: .85rem; font-weight: 700; }
 .topic-management-list li > div { display: flex; gap: 8px; }

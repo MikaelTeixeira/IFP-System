@@ -39,7 +39,7 @@ def index():
         return redirect(url_for("reports.school", institution_id=profile["institution_id"]))
     report = institute_report()
     school_names = [item["nome"] for item in report["schools"]]
-    colors = ["#2d3d5f", "#b96121", "#277454", "#526484"]
+    colors = ["#2D3B57", "#B86122", "#277454", "#536381"]
     network_trend_chart = {
         "labels": ["Fev", "Mar", "Abr", "Mai", "Jun", "Ago", "Set"],
         "datasets": [

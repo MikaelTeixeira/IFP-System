@@ -1,12 +1,27 @@
 from functools import wraps
 
-from flask import abort, current_app, has_app_context, redirect, session, url_for
+from flask import abort, current_app, g, has_app_context, redirect, session, url_for
 
 from .profiles import get_profile
 
 
 def current_profile():
-    profile = get_profile(session.get("profile"))
+    """Return the signed-in profile, validated against its account once per request.
+
+    The decorators, the view and the template context all ask for it; without the
+    cache each call costs a database round trip.
+    """
+    key = session.get("profile")
+    cached = g.get("_current_profile")
+    if cached is None or cached[0] != key:
+        cached = (key, _load_profile(key))
+        g._current_profile = cached
+    profile = cached[1]
+    return dict(profile) if profile else None
+
+
+def _load_profile(key):
+    profile = get_profile(key)
     if not profile or not has_app_context() or not current_app.config.get("DATABASE_ENABLED", False):
         return profile
     from ..extensions import db

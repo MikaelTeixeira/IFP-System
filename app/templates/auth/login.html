@@ -1,13 +1,14 @@
 {% extends "auth/base.html" %}
+{% from "macros/brand.html" import brand_logo %}
 {% block content %}
   <div class="auth-layout">
     <section class="auth-story" aria-labelledby="welcome-title">
-      <a class="auth-brand" href="{{ url_for('auth.login') }}"><span>IFP</span><strong>Instituto<br>Fabiana Pinto</strong></a>
+      <a class="auth-brand" href="{{ url_for('auth.login') }}">{{ brand_logo('auth-brand__logo') }}<strong>Instituto<br>Fabiana Pinto</strong></a>
       <div class="auth-story__content">
         <h1 id="welcome-title">Um ambiente para acompanhar cada etapa da aprendizagem.</h1>
         <p><strong>Sistema de avaliações.</strong> Acesse simulados, turmas e informações acadêmicas de acordo com o seu perfil.</p>
       </div>
-      <div class="auth-pattern" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      {{ brand_logo('auth-watermark brand-watermark', background=none) }}
     </section>
     <section class="auth-access" aria-labelledby="login-title">
       <div class="auth-panel">

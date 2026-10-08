@@ -616,7 +616,7 @@ def test_student_dashboard_shows_assessments_and_review(client):
     assert "Meus simulados" in content
     assert "Materiais de revisão" in content
     assert 'class="role-student"' in content
-    assert "student-home-hero" in content
+    assert "home-hero" in content
     assert "O que você quer fazer?" in content
 
 
@@ -898,6 +898,21 @@ def test_database_layer_persists_administrative_foundations():
     status = app.test_cli_runner().invoke(args=["db-status"])
     assert status.exit_code == 0
     assert "conectado e respondendo" in status.output
+
+
+@pytest.mark.parametrize("profile_key, action", [
+    ("student", "Ver meus simulados"),
+    ("teacher", "Ver solicitações"),
+    ("school_coordinator", "Acompanhar simulados"),
+    ("institute_coordinator", "Ver relatório das escolas"),
+    ("it_admin", "Gerenciar usuários"),
+])
+def test_every_profile_dashboard_has_home_banner(client, profile_key, action):
+    login_as(client, profile_key)
+    content = client.get("/inicio").get_data(as_text=True)
+    assert 'class="home-hero"' in content
+    assert "home-hero__mark brand-watermark" in content
+    assert action in content
 
 
 def test_it_navigation_hides_internal_component_catalog(client):

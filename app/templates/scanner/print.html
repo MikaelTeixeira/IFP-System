@@ -1,0 +1,70 @@
+{% from "macros/brand.html" import brand_logo_shapes %}
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cartões · {{ assessment.titulo }}</title>
+{% include "partials/brand_head.html" %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/scanner.css', v='2') }}">
+  </head>
+  <body class="answer-sheet-document">
+    <div class="print-toolbar">
+      <div><strong>{{ assessment.titulo }}</strong><span>{{ cards|length }} cartão(ões) · {{ scope.series_name or 'Todas as séries' }}{% if scope.school_year %} · {{ scope.school_year }}{% endif %}</span></div>
+      <div class="print-toolbar__actions"><a href="{{ url_for('scanner.index', assessment_id=assessment.id, **scope) }}">Voltar</a><button type="button" onclick="window.print()">Imprimir / salvar PDF</button></div>
+    </div>
+    <p class="print-help">Papel A4 · escala 100% · sem cabeçalhos e rodapés do navegador. Preserve os quatro quadrados nos cantos.</p>
+    {% for card in cards %}<article class="answer-sheet">
+      <svg class="answer-sheet-art" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 210 297" role="img" aria-label="Cartão-resposta de {{ card.student.nome }}">
+        <title>{{ card.student.nome }} · {{ assessment.titulo }}</title>
+        <rect width="210" height="297" fill="white"/>
+        {% for x, y in marker_centers %}<rect class="registration-marker" x="{{ x - marker_size / 2 }}" y="{{ y - marker_size / 2 }}" width="{{ marker_size }}" height="{{ marker_size }}" fill="black"/>{% endfor %}
+        <g class="answer-sheet-logo" transform="translate(20 19.5) scale(.08)" color="#522304">{{ brand_logo_shapes() }}</g>
+        <text x="36" y="24.5" font-size="3.6" font-weight="700" fill="#2D3B57">INSTITUTO FABIANA PINTO</text>
+        <text x="36" y="29.5" font-size="2.7" fill="#697282" letter-spacing=".45">AVALIAÇÕES E APRENDIZAGEM</text>
+        <text x="20" y="42" font-size="8" font-weight="700" fill="#2D3B57">Cartão-resposta</text>
+        <foreignObject x="20" y="46" width="132" height="13"><div xmlns="http://www.w3.org/1999/xhtml" class="sheet-assessment-title">{{ assessment.titulo }}</div></foreignObject>
+        <image x="161" y="19" width="29" height="29" href="{{ card.qr }}" xlink:href="{{ card.qr }}"/>
+        <text x="175.5" y="53" font-size="2.5" fill="#697282" text-anchor="middle">IDENTIFICAÇÃO INDIVIDUAL</text>
+        <rect x="20" y="58" width="170" height=".7" rx=".35" fill="#B86122"/>
+
+        <rect x="20" y="63" width="170" height="27" rx="2" fill="#f6f7f9" stroke="#c8ced7" stroke-width=".25"/>
+        <path d="M20 77h170M153 63v14M104 77v13M156 77v13" fill="none" stroke="#c8ced7" stroke-width=".25"/>
+        <text x="24" y="68" class="sheet-label">ESTUDANTE</text>
+        <text x="24" y="73.5" font-size="4.4" font-weight="700" fill="#202838"{% if card.student.nome|length > 45 %} textLength="125" lengthAdjust="spacingAndGlyphs"{% endif %}>{{ card.student.nome }}</text>
+        <text x="157" y="68" class="sheet-label">MATRÍCULA</text><text x="157" y="73.5" class="sheet-value">{{ card.student.matricula }}</text>
+        <text x="24" y="82" class="sheet-label">INSTITUIÇÃO</text><text x="24" y="87" class="sheet-value"{% if card.institution.nome|length > 30 %} textLength="74" lengthAdjust="spacingAndGlyphs"{% endif %}>{{ card.institution.nome }}</text>
+        <text x="108" y="82" class="sheet-label">SÉRIE / ANO · TURMA</text><text x="108" y="87" class="sheet-value">{{ card.series.nome }} · {{ card.school_class.nome }}</text>
+        <text x="160" y="82" class="sheet-label">ANO LETIVO</text><text x="160" y="87" class="sheet-value">{{ card.school_class.ano_letivo }}</text>
+
+        <circle cx="24" cy="96.5" r="2.2" fill="#2D3B57"/><text x="24" y="97.5" text-anchor="middle" fill="white" font-size="3" font-weight="700">i</text>
+        <text x="29" y="95.5" font-size="2.8" fill="#414b5b">Preencha toda a bolha com caneta azul ou preta. Marque uma alternativa por questão.</text>
+        <text x="29" y="100" font-size="2.8" fill="#414b5b">Não use X, não rasure e não dobre a folha.</text>
+
+        {% for block in blocks %}
+          {% set offset = block * 90 %}
+          <text x="{{ 24 + offset }}" y="106" font-size="2.6" fill="#697282" font-weight="700">QUESTÃO</text>
+          {% for letter in block_letters[block] %}<text x="{{ 47 + loop.index0 * 12 + offset }}" y="106" font-size="3" text-anchor="middle" fill="#2D3B57" font-weight="700">{{ letter }}</text>{% endfor %}
+          <line x1="{{ 20 + offset }}" y1="108" x2="{{ 100 + offset }}" y2="108" stroke="#a2aab7" stroke-width=".25"/>
+        {% endfor %}
+        {% for row in rows %}
+          <text x="{{ row.x }}" y="{{ row.y + 1.3 }}" font-size="3.7" fill="#2D3B57" font-weight="700">{{ '%02d'|format(row.number) }}</text>
+          {% for bubble in row.bubbles %}<circle class="answer-bubble" data-question="{{ row.number }}" data-option="{{ bubble.letter }}" cx="{{ bubble.x }}" cy="{{ row.y }}" r="{{ bubble_radius }}" fill="white" stroke="black" stroke-width=".38"/>{% endfor %}
+          <line x1="{{ 20 + row.block * 90 }}" y1="{{ row.y + 5.5 }}" x2="{{ 100 + row.block * 90 }}" y2="{{ row.y + 5.5 }}" stroke="#c8ced7" stroke-width=".18"/>
+        {% endfor %}
+        {% if blocks|length == 1 %}
+          <rect x="117" y="113" width="70" height="51" rx="3" fill="#f6f7f9"/>
+          <text x="123" y="121" font-size="3.3" font-weight="700" fill="#2D3B57">Como preencher</text>
+          <circle cx="128" cy="132" r="3" fill="black"/><text x="136" y="133" font-size="3" fill="#414b5b">Bolha toda preenchida</text>
+          <circle cx="128" cy="145" r="3" fill="white" stroke="#9a9fa8" stroke-width=".38"/><path d="M126 143l4 4m0-4l-4 4" stroke="#9a9fa8" stroke-width=".4"/><text x="136" y="146" font-size="3" fill="#414b5b">Evite X e traços</text>
+          <text x="123" y="157" font-size="2.8" fill="#697282">Confira nome, turma e matrícula.</text>
+        {% endif %}
+        <rect x="20" y="248" width="170" height="22" rx="2" fill="none" stroke="#c8ced7" stroke-width=".3"/>
+        <text x="24" y="253" class="sheet-label">ASSINATURA DO ESTUDANTE</text><line x1="24" y1="265" x2="151" y2="265" stroke="#737d8b" stroke-width=".25"/>
+        <text x="158" y="253" class="sheet-label">DATA</text><text x="158" y="265" font-size="3" fill="#737d8b">___ / ___ / _____</text>
+        <text x="20" y="278" font-size="2.6" fill="#697282">{{ question_count }} questões objetivas · {{ template_version }} · impressão A4 em 100%</text>
+        <text x="190" y="278" text-anchor="end" font-size="2.6" fill="#697282">Cartão {{ card.sheet.id[:8]|upper }}</text>
+      </svg>
+    </article>{% else %}<p class="print-empty">Nenhum estudante ativo corresponde aos filtros selecionados.</p>{% endfor %}
+  </body>
+</html>

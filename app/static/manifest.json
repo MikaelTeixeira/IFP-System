@@ -1,0 +1,13 @@
+{
+  "name": "Instituto Fabiana Pinto · Avaliações",
+  "short_name": "IFP Avaliações",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "theme_color": "#2D3B57",
+  "background_color": "#F7F3EA",
+  "icons": [
+    { "src": "images/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "images/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "images/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

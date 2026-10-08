@@ -1,4 +1,11 @@
 Flask==3.1.2
 Flask-SQLAlchemy==3.1.1
+<<<<<<< Updated upstream
+=======
+numpy==2.5.3
+opencv-python-headless==5.0.0.93
+psycopg[binary]==3.3.6
+pypdfium2==5.13.0
+>>>>>>> Stashed changes
 PyMySQL==1.2.3
 SQLAlchemy==2.1.1

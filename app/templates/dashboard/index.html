@@ -1,19 +1,22 @@
 {% extends "base.html" %}
 {% from "macros/icons.html" import icon %}
+{% from "macros/brand.html" import brand_logo %}
 {% block content %}
-  {% if current_profile.key == 'student' %}
-  <header class="student-home-hero">
-    <div class="student-home-hero__copy">
-      <p class="student-home-hero__eyebrow"><span aria-hidden="true"></span> Seu ambiente de aprendizagem</p>
+  {% set hero_eyebrow, hero_icon, hero_action, hero_endpoint = hero %}
+  <header class="home-hero">
+    {{ brand_logo('home-hero__mark brand-watermark', background=none) }}
+    <div class="home-hero__copy">
+      <p class="home-hero__eyebrow"><span aria-hidden="true"></span> {{ hero_eyebrow }}</p>
       <h1>{{ page_title }}</h1>
       <p>{{ page_description }}</p>
-      <a class="button student-primary-action" href="{{ url_for('student_area.assessments') }}">Ver meus simulados {{ icon('chevron-right') }}</a>
+      <a class="button button--primary home-hero__action" href="{{ url_for(hero_endpoint) }}">{{ hero_action }} {{ icon('chevron-right') }}</a>
     </div>
-    <div class="student-home-hero__visual" aria-hidden="true">
-      <span>{{ icon('curriculum') }}</span>
-      <i>2026</i>
+    <div class="home-hero__visual">
+      <span aria-hidden="true">{{ icon(hero_icon) }}</span>
+      <i><span class="sr-only">Período atual: </span>2026</i>
     </div>
   </header>
+  {% if current_profile.key == 'student' %}
   <section class="student-home-actions" aria-labelledby="student-actions-title">
     <div class="section-heading"><div><h2 id="student-actions-title">O que você quer fazer?</h2><p>Escolha uma área para continuar seus estudos.</p></div></div>
     <div class="student-home-grid">
@@ -23,7 +26,7 @@
         <a class="student-home-card student-home-card--{{ loop.index }}" href="{{ url_for(endpoint, **parameters) }}">
           <span class="student-home-card__icon" aria-hidden="true">{{ icon(action_icon) }}</span>
           <span class="student-home-card__copy"><small>Área do aluno</small><strong>{{ label }}</strong><span>{{ action_description }}</span></span>
-          <b>{{ value }}</b>
+          {% if value.isdigit() %}<b>{{ value }}</b>{% endif %}
           <span class="student-home-card__cta">Abrir {{ icon('chevron-right') }}</span>
         </a>
       {% endfor %}
@@ -31,10 +34,6 @@
   </section>
   <section class="student-study-tip"><span aria-hidden="true">{{ icon('info') }}</span><div><h2>Uma etapa de cada vez</h2><p>Confira os materiais de revisão antes dos simulados e acompanhe suas notificações para não perder novas publicações.</p></div></section>
   {% else %}
-  <header class="welcome-header">
-    <div><p class="breadcrumb">Início</p><h1>{{ page_title }}</h1><p>{{ page_description }}</p></div>
-    <div class="welcome-date"><span>Período atual</span><strong>2026</strong></div>
-  </header>
   <section class="dashboard-summary" aria-labelledby="summary-title">
     <div class="section-heading"><div><h2 id="summary-title">Seu espaço de trabalho</h2><p>Acesse as informações disponíveis para o seu perfil.</p></div></div>
     <div class="summary-list">

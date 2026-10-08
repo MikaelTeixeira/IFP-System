@@ -9,6 +9,7 @@ venv/
 htmlcov/
 instance/*
 !instance/mysql.env.example
+!instance/database.env.example
 tmp/
 *.log
 .DS_Store

@@ -12,6 +12,16 @@ from ..data.notifications import mark_profile_notifications_read, notifications_
 from ..data.attempts import attempts_with_pending_answers
 
 
+# Banner da tela inicial: chamada, ícone e ação principal de cada perfil.
+HOME_HEROES = {
+    "student": ("Seu ambiente de aprendizagem", "curriculum", "Ver meus simulados", "student_area.assessments"),
+    "teacher": ("Seu espaço de ensino", "questions", "Ver solicitações", "assessments.teacher_requests"),
+    "school_coordinator": ("Gestão da escola", "school", "Acompanhar simulados", "assessments.list_assessments"),
+    "institute_coordinator": ("Visão da rede", "chart", "Ver relatório das escolas", "reports.index"),
+    "it_admin": ("Administração do ambiente", "people", "Gerenciar usuários", "users.index"),
+}
+
+
 @core_bp.get("/")
 def index():
     return redirect(url_for("core.dashboard") if current_profile() else url_for("auth.login"))
@@ -49,7 +59,7 @@ def dashboard():
             ("Simulados", str(len(ASSESSMENTS)), "assessments.list_assessments", {}),
             ("Materiais de revisão", str(len(MATERIAL_POSTS)), "materials.index", {}),
         ]
-    return render_template("dashboard/index.html", page_title=f"Olá, {profile['name'].split()[0]}", page_description=profile["description"], summary=summary, active_navigation="inicio")
+    return render_template("dashboard/index.html", page_title=f"Olá, {profile['name'].split()[0]}", page_description=profile["description"], summary=summary, hero=HOME_HEROES.get(role, HOME_HEROES["it_admin"]), active_navigation="inicio")
 
 
 @core_bp.get("/notificacoes")

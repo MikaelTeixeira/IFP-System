@@ -1,31 +1,50 @@
 :root {
-  --brand-navy-900: #1d2942;
-  --brand-navy-700: #2d3d5f;
-  --brand-navy-500: #526484;
+  /* Paleta da marca, extraída da logo e das peças do @institutofabianapinto. */
+  --brand-navy-900: #1e283c;
+  --brand-navy-700: #2d3b57; /* títulos institucionais */
+  --brand-navy-500: #536381;
   --brand-navy-100: #e7eaf0;
+  --brand-orange-800: #76390f;
   --brand-orange-700: #914713;
-  --brand-orange-500: #b96121;
+  --brand-orange-500: #b86122; /* disco da logo */
+  --brand-orange-200: #f3c6a5;
   --brand-orange-100: #f7e8dd;
-  --surface-page: #f6f4ef;
+  --brand-orange-line: #e7c7ae;
+  --brand-brown-900: #522304; /* traços da logo */
+  --brand-sand-300: #eadab3; /* fundo das peças */
+  --brand-sand-100: #f6eedc;
+  --brand-sand-50: #fbf8f0;
+
+  --surface-page: #f7f3ea;
   --surface-panel: #fffefa;
-  --surface-subtle: #eeece6;
+  --surface-sunken: #faf7f0;
+  --surface-subtle: #efeadf;
+  --surface-hover: #f9f2e4;
   --surface-navy-soft: #e9edf4;
   --text-primary: #202838;
   --text-muted: #626b79;
-  --border-default: #d9d8d2;
-  --border-strong: #b9bdc4;
+  --border-default: #dcd6c9;
+  --border-strong: #b3ac9d;
+  --border-control: #8f887a;
+  --border-navy: #c6cedc;
   --state-success: #277454;
+  --state-success-ink: #17513a;
   --state-success-soft: #e5f3ed;
+  --state-success-line: #a8d4c2;
   --state-warning: #9a6512;
+  --state-warning-ink: #714807;
   --state-warning-soft: #fff2ce;
+  --state-warning-line: #e3c777;
   --state-danger: #a33a3a;
+  --state-danger-ink: #792929;
   --state-danger-soft: #fbe7e7;
+  --state-danger-line: #e2aaaa;
   --focus-ring: #d47a35;
   --font-sans: "Aptos", "Segoe UI Variable Text", "Trebuchet MS", sans-serif;
   --radius-small: 8px;
   --radius-medium: 14px;
-  --shadow-float: 0 14px 34px rgb(29 41 66 / 15%);
-  --shadow-soft: 0 8px 24px rgb(29 41 66 / 9%);
+  --shadow-float: 0 14px 34px rgb(30 40 60 / 15%);
+  --shadow-soft: 0 8px 24px rgb(30 40 60 / 9%);
   --sidebar-width: 268px;
   --topbar-height: 72px;
   --transition-fast: 160ms cubic-bezier(.22, 1, .36, 1);

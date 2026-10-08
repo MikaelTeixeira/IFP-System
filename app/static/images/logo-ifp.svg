@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" color="#522304">
   <title>Instituto Fabiana Pinto</title>
   <circle cx="75" cy="75" r="75" fill="#B86122"/>
-  <g transform="translate(72.4 75.8) scale(1.18) translate(-72.4 -75.8)">
+  <g>
     <g fill="none" stroke="#522304">
       <path class="brand-logo__line" stroke-width="4.6" d="M70 125.5V26" pathLength="1"/>
       <path class="brand-logo__line" stroke-width="4.6" d="M78.5 125.5V26" pathLength="1"/>

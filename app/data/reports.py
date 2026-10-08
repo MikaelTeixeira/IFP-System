@@ -1,5 +1,7 @@
 from statistics import mean
 
+from flask import g, has_app_context
+
 from .academic import DATA
 
 
@@ -23,40 +25,61 @@ def _records(key, **filters):
     return [item for item in DATA[key] if all(item.get(field) == value for field, value in filters.items())]
 
 
-def _actual_scores(student_ids):
-    """Return normalized persisted assessment scores when the database is available."""
+def _per_request(name, load):
+    """A report page computes metrics for every school, series and class; read each table once per request."""
+    if not has_app_context():
+        return load()
+    if name not in g:
+        setattr(g, name, load())
+    return getattr(g, name)
+
+
+def _load_scores_by_student():
     try:
+        from ..extensions import db
         from ..models import AssessmentAttempt
         from .assessments import ASSESSMENTS
 
         question_counts = {item["id"]: max(1, len(item.get("question_ids", []))) for item in ASSESSMENTS}
-        attempts = AssessmentAttempt.query.filter(
-            AssessmentAttempt.student_id.in_(student_ids),
+        rows = db.session.execute(db.select(AssessmentAttempt.student_id, AssessmentAttempt.assessment_id, AssessmentAttempt.final_score).where(
             AssessmentAttempt.status == "Resultado disponível",
             AssessmentAttempt.final_score.isnot(None),
-        ).all() if student_ids else []
-        return [min(10, round(item.final_score / question_counts.get(item.assessment_id, 1) * 10, 1)) for item in attempts]
+        )).all()
     except (RuntimeError, AttributeError):
-        return []
+        return {}
+    scores = {}
+    for student_id, assessment_id, final_score in rows:
+        scores.setdefault(student_id, []).append(min(10, round(final_score / question_counts.get(assessment_id, 1) * 10, 1)))
+    return scores
 
 
-def _baseline(institution_id):
+def _actual_scores(student_ids):
+    """Return normalized persisted assessment scores when the database is available."""
+    scores = _per_request("_report_scores_by_student", _load_scores_by_student)
+    return [score for student_id in student_ids for score in scores.get(student_id, [])]
+
+
+def _load_baselines():
     try:
-        from ..extensions import db
         from ..models import ReportSnapshot
 
-        snapshot = db.session.get(ReportSnapshot, institution_id)
-        if snapshot:
-            return {
+        return {
+            snapshot.institution_id: {
                 "average": snapshot.average,
                 "attendance": snapshot.attendance,
                 "absences": snapshot.absences,
                 "trend": list(snapshot.performance_trend or []),
                 "absence_trend": list(snapshot.absence_trend or []),
             }
+            for snapshot in ReportSnapshot.query.all()
+        }
     except RuntimeError:
-        pass
-    return SCHOOL_BASELINES.get(institution_id, {"average": 0, "attendance": 0, "absences": 0, "trend": [0] * 7, "absence_trend": [0] * 7})
+        return {}
+
+
+def _baseline(institution_id):
+    baseline = _per_request("_report_baselines", _load_baselines).get(institution_id)
+    return baseline or SCHOOL_BASELINES.get(institution_id, {"average": 0, "attendance": 0, "absences": 0, "trend": [0] * 7, "absence_trend": [0] * 7})
 
 
 def _metrics(institution_id, series_id=None, class_id=None, school_year=None):
@@ -195,8 +218,8 @@ def institute_report():
 
 
 def line_chart(values, label="Média", maximum=10):
-    return {"labels": MONTHS, "datasets": [{"label": label, "values": values, "color": "#2d3d5f"}], "max": maximum}
+    return {"labels": MONTHS, "datasets": [{"label": label, "values": values, "color": "#2D3B57"}], "max": maximum}
 
 
 def bar_chart(labels, values, label, maximum=None):
-    return {"labels": labels, "datasets": [{"label": label, "values": values, "color": "#b96121"}], "max": maximum or max(values + [1])}
+    return {"labels": labels, "datasets": [{"label": label, "values": values, "color": "#B86122"}], "max": maximum or max(values + [1])}

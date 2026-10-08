@@ -586,7 +586,7 @@ function renderReportChart(chart) {
       const barHeight = value / maximum * plotHeight;
       const x = margin.left + index * groupWidth + (groupWidth - barWidth * datasets.length) / 2 + datasetIndex * barWidth;
       const y = margin.top + plotHeight - barHeight;
-      add("rect", { x, y, width: barWidth - 3, height: barHeight, rx: 4, fill: dataset.color || "#b96121" });
+      add("rect", { x, y, width: barWidth - 3, height: barHeight, rx: 4, fill: dataset.color || "#B86122" });
       add("text", { x: x + (barWidth - 3) / 2, y: Math.max(14, y - 7), "text-anchor": "middle", class: "chart-value" }, String(rawValue).replace(".", ","));
     }));
   } else {
@@ -596,9 +596,9 @@ function renderReportChart(chart) {
         const y = margin.top + plotHeight - Number(rawValue) / maximum * plotHeight;
         return { x, y, value: rawValue };
       });
-      add("path", { d: points.map((point, index) => `${index ? "L" : "M"} ${point.x} ${point.y}`).join(" "), stroke: dataset.color || "#2d3d5f", class: "chart-line" });
+      add("path", { d: points.map((point, index) => `${index ? "L" : "M"} ${point.x} ${point.y}`).join(" "), stroke: dataset.color || "#2D3B57", class: "chart-line" });
       points.forEach((point) => {
-        add("circle", { cx: point.x, cy: point.y, r: 5, fill: dataset.color || "#2d3d5f", class: "chart-point" });
+        add("circle", { cx: point.x, cy: point.y, r: 5, fill: dataset.color || "#2D3B57", class: "chart-point" });
         if (datasets.length === 1) add("text", { x: point.x, y: point.y - 11, "text-anchor": "middle", class: "chart-value" }, String(point.value).replace(".", ","));
       });
     });
@@ -609,7 +609,7 @@ function renderReportChart(chart) {
     const entries = datasets.map((dataset) => {
       const entry = document.createElement("span");
       const marker = document.createElement("i");
-      marker.style.backgroundColor = dataset.color || "#2d3d5f";
+      marker.style.backgroundColor = dataset.color || "#2D3B57";
       entry.append(marker, document.createTextNode(dataset.label));
       return entry;
     });
