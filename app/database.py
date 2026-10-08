@@ -217,23 +217,13 @@ def _remove_orphan_file_records():
 
 def create_and_seed_database():
     db.create_all()
-<<<<<<< Updated upstream
-    if db.engine.dialect.name == "mysql":
-        unique_names = {item.get("name") for item in inspect(db.engine).get_unique_constraints("assessment_attempts")}
-        if "uq_attempt_assessment_student" in unique_names:
-            db.session.execute(text("ALTER TABLE assessment_attempts DROP INDEX uq_attempt_assessment_student"))
-            db.session.commit()
-=======
     if db.engine.dialect.name == "postgresql":
         _close_data_api()
->>>>>>> Stashed changes
     _seed_reference_data()
     _refresh_compatibility_data()
     _remove_orphan_file_records()
 
 
-<<<<<<< Updated upstream
-=======
 def _close_data_api():
     """Keep the application tables out of the Supabase Data API.
 
@@ -252,7 +242,6 @@ def _close_data_api():
     db.session.commit()
 
 
->>>>>>> Stashed changes
 def init_database(app):
     db.init_app(app)
 

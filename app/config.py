@@ -68,11 +68,15 @@ class Config:
     TEMPLATES_AUTO_RELOAD = True
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024
     QUESTION_IMAGE_MAX_BYTES = 2 * 1024 * 1024
+    SCAN_UPLOAD_MAX_BYTES = 50 * 1024 * 1024
+    SCAN_MAX_PAGES = 300
+    SCAN_MAX_PIXELS = 40_000_000
     SQLALCHEMY_DATABASE_URI = DATABASE_URI
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = DATABASE_ENGINE_OPTIONS
     DATABASE_ENABLED = DATABASE_ENABLED
     UPLOAD_ROOT = str(Path(__file__).resolve().parents[1] / "instance" / "uploads")
+    SCAN_ROOT = str(Path(__file__).resolve().parents[1] / "instance" / "answer-scans")
 
 
 class TestConfig(Config):
@@ -82,3 +86,4 @@ class TestConfig(Config):
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
     DATABASE_ENABLED = True
     UPLOAD_ROOT = str(Path(__file__).resolve().parents[1] / "tmp" / "test-uploads")
+    SCAN_ROOT = str(Path(__file__).resolve().parents[1] / "tmp" / "test-answer-scans")

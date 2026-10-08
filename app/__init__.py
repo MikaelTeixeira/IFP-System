@@ -23,6 +23,7 @@ def create_app(config_object=Config):
     from .materials import materials_bp
     from .users import users_bp
     from .reports import reports_bp
+    from .scanner import scanner_bp
     from .errors import register_error_handlers
     from .auth.security import current_profile
     from .navigation import build_navigation
@@ -37,6 +38,7 @@ def create_app(config_object=Config):
     app.register_blueprint(materials_bp, url_prefix="/materiais")
     app.register_blueprint(users_bp, url_prefix="/usuarios")
     app.register_blueprint(reports_bp, url_prefix="/relatorios")
+    app.register_blueprint(scanner_bp, url_prefix="/cartoes-resposta")
     register_error_handlers(app)
 
     @app.context_processor

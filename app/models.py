@@ -332,8 +332,6 @@ class AttemptAnswer(db.Model):
     graded_at = db.Column("corrigida_em", db.DateTime, nullable=True)
     grader_id = db.Column("corretor_id", db.String(36), nullable=True)
     attempt = db.relationship("AssessmentAttempt", back_populates="answers")
-<<<<<<< Updated upstream
-=======
 
 
 class AnswerSheet(db.Model):
@@ -385,4 +383,3 @@ class AnswerScanPage(db.Model):
     analysis = db.Column("analise", db.JSON, nullable=True)
     created_at = db.Column("criado_em", db.DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None))
     batch = db.relationship("AnswerScanBatch", back_populates="pages")
->>>>>>> Stashed changes
