@@ -19,8 +19,8 @@
       {% if pending_records %}
         <div class="carousel-controls" aria-label="Navegação das solicitações de correção">
           <span class="carousel-position" data-carousel-position aria-live="polite"></span>
-          <button class="carousel-button" type="button" data-carousel-previous aria-label="Ver solicitação anterior" aria-controls="correcoes-pendentes">{{ icon('chevron-left') }}</button>
-          <button class="carousel-button" type="button" data-carousel-next aria-label="Ver próxima solicitação" aria-controls="correcoes-pendentes">{{ icon('chevron-right') }}</button>
+          <button class="carousel-button" type="button" data-carousel-previous aria-label="Ver solicitação anterior" aria-controls="correcoes-pendentes" data-tooltip="Solicitação anterior">{{ icon('chevron-left') }}</button>
+          <button class="carousel-button" type="button" data-carousel-next aria-label="Ver próxima solicitação" aria-controls="correcoes-pendentes" data-tooltip="Próxima solicitação">{{ icon('chevron-right') }}</button>
         </div>
       {% endif %}
     </div>
@@ -57,8 +57,8 @@
       {% if history_records %}
         <div class="carousel-controls" aria-label="Navegação do histórico de correções">
           <span class="carousel-position" data-carousel-position aria-live="polite"></span>
-          <button class="carousel-button" type="button" data-carousel-previous aria-label="Ver correção anterior" aria-controls="historico-correcoes">{{ icon('chevron-left') }}</button>
-          <button class="carousel-button" type="button" data-carousel-next aria-label="Ver próxima correção" aria-controls="historico-correcoes">{{ icon('chevron-right') }}</button>
+          <button class="carousel-button" type="button" data-carousel-previous aria-label="Ver correção anterior" aria-controls="historico-correcoes" data-tooltip="Correção anterior">{{ icon('chevron-left') }}</button>
+          <button class="carousel-button" type="button" data-carousel-next aria-label="Ver próxima correção" aria-controls="historico-correcoes" data-tooltip="Próxima correção">{{ icon('chevron-right') }}</button>
         </div>
       {% endif %}
     </div>

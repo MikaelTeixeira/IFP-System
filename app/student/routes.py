@@ -9,7 +9,7 @@ from ..data.materials import MATERIAL_POSTS, group_materials
 from ..data.questions import find_question
 from ..data.notifications import mark_profile_notifications_read, notifications_for_student
 from ..data.notifications import add_role_notification
-from ..data.attempts import AttemptExpiredError, answers_map, find_attempt, get_or_create_attempt, remaining_seconds, save_answers, submit_attempt
+from ..data.attempts import AttemptClosedError, AttemptExpiredError, answers_map, corrections_for, find_attempt, get_or_create_attempt, remaining_seconds, save_answers, submit_attempt
 
 
 def student_record():
@@ -91,6 +91,8 @@ def take_assessment(assessment_id):
             return redirect(url_for("student_area.assessment_result", assessment_id=assessment_id))
         try:
             missing_numbers = submit_attempt(attempt, questions, request.form)
+        except AttemptClosedError:
+            return redirect(url_for("student_area.assessment_result", assessment_id=assessment_id))
         except AttemptExpiredError:
             return render_template(
                 "student/take_assessment.html", page_title=assessment["titulo"], assessment=assessment,
@@ -112,7 +114,7 @@ def take_assessment(assessment_id):
         teacher_ids = {question["autor_id"] for question in questions if question.get("tipo") == "aberta" and question.get("autor_id")}
         for teacher_id in teacher_ids:
             add_role_notification("teacher", teacher_id, "Resposta aberta aguardando correção", assessment["titulo"], url_for("assessments.corrections"), "open_answer")
-        return render_attempt_result(assessment, attempt, questions)
+        return render_attempt_result(assessment, attempt)
     return render_template(
         "student/take_assessment.html",
         page_title=assessment["titulo"],
@@ -135,17 +137,29 @@ def save_assessment(assessment_id):
     questions = [find_question(question_id) for question_id in assessment["question_ids"] if find_question(question_id)]
     try:
         save_answers(attempt, questions, request.form)
+    except AttemptClosedError:
+        return jsonify({"saved": False, "status": attempt.status}), 409
     except AttemptExpiredError:
         return jsonify({"saved": False, "status": "Tempo encerrado", "remaining_seconds": 0}), 409
     return jsonify({"saved": True, "remaining_seconds": remaining_seconds(attempt)})
 
 
-def render_attempt_result(assessment, attempt, questions=None):
-    questions = questions or [find_question(question_id) for question_id in assessment["question_ids"] if find_question(question_id)]
+def render_attempt_result(assessment, attempt):
     records = {item.question_id: item for item in attempt.answers}
+    # A result shows the questions it was graded on, even if the assessment changed afterwards.
+    order = {question_id: index for index, question_id in enumerate(assessment["question_ids"])}
+    graded_ids = sorted(records, key=lambda question_id: (order.get(question_id, len(order)), question_id))
+    questions = [find_question(question_id) for question_id in graded_ids or assessment["question_ids"]]
+    questions = [question for question in questions if question]
+    graded_keys = {
+        question["id"]: records[question["id"]].graded_key(question.get("gabarito"))
+        if question["id"] in records else question.get("gabarito")
+        for question in questions
+    }
     return render_template(
         "student/assessment_result.html", page_title="Resultado do simulado",
-        assessment=assessment, attempt=attempt, questions=questions,
+        assessment=assessment, attempt=attempt, questions=questions, graded_keys=graded_keys,
+        corrections=corrections_for(attempt.id),
         answer_records=records, answers={key: item.answer_text for key, item in records.items()},
         correct=int(attempt.objective_score),
         objective_count=sum(item.get("tipo", "objetiva") == "objetiva" for item in questions),

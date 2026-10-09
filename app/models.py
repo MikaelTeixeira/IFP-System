@@ -326,12 +326,47 @@ class AttemptAnswer(db.Model):
     answer_text = db.Column("resposta", db.Text, nullable=False, default="")
     is_open = db.Column("aberta", db.Boolean, nullable=False, default=False)
     is_correct = db.Column("correta", db.Boolean, nullable=True)
+    # The key this objective answer was graded against. Editing the question later never
+    # changes a published result, so the result shows this key, not the current one.
+    answer_key = db.Column("gabarito", db.String(8), nullable=True)
     grade = db.Column("nota", db.Float, nullable=True)
     concept = db.Column("conceito", db.String(60), nullable=True)
     feedback = db.Column("comentario", db.Text, nullable=True)
     graded_at = db.Column("corrigida_em", db.DateTime, nullable=True)
     grader_id = db.Column("corretor_id", db.String(36), nullable=True)
     attempt = db.relationship("AssessmentAttempt", back_populates="answers")
+
+    def graded_key(self, current_key):
+        """The key that produced `is_correct`, or None when it can no longer be proven.
+
+        Answers graded before the key was stored keep what is still certain: a right
+        answer is its own key, and a wrong one keeps the current key only while that
+        key still disagrees with the answer.
+        """
+        if self.is_open:
+            return None
+        if self.answer_key:
+            return self.answer_key
+        if self.is_correct:
+            return self.answer_text or None
+        return current_key if current_key and current_key != self.answer_text else None
+
+
+class AttemptCorrection(db.Model):
+    """Audit record of a published result corrected in place: the old values live here."""
+
+    __tablename__ = "retificacoes"
+
+    id = db.Column(db.String(36), primary_key=True)
+    attempt_id = db.Column("tentativa_id", db.String(36), db.ForeignKey("tentativas.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind = db.Column("tipo", db.String(20), nullable=False)
+    reason = db.Column("motivo", db.Text, nullable=False)
+    # {"changes": [{"question_id", "answer": [old, new], "key": [old, new], "correct": [old, new]}],
+    #  "objective": [old, new], "final": [old, new]}
+    details = db.Column("detalhes", db.JSON, nullable=False)
+    actor_role = db.Column("perfil_autor", db.String(40), nullable=False)
+    actor_id = db.Column("autor_id", db.String(36), nullable=False)
+    created_at = db.Column("criado_em", db.DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None), index=True)
 
 
 class AnswerSheet(db.Model):

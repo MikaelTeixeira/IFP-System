@@ -4,9 +4,10 @@ from flask import abort, current_app, flash, redirect, render_template, request,
 from werkzeug.utils import secure_filename
 
 from . import questions_bp
-from ..auth.security import current_profile, login_required
+from ..auth.security import check_csrf, csrf_token, current_profile, login_required
 from ..data.questions import QUESTIONS, add_question, delete_question, find_question, persist_question, update_question
 from ..data.academic import DATA, find
+from ..data.attempts import answers_graded_with_other_key, graded_answer_count, regrade_question
 from ..data.curriculum import TOPICS, find_subject, find_topic, subjects_for_profile
 from ..storage import absolute_file_path, delete_stored_file, save_uploaded_file, stored_file
 from ..data.notifications import add_role_notification
@@ -16,6 +17,8 @@ from ..data.reviews import actor_identity, add_review_event, review_history
 ACCESS_ROLES = {"teacher", "school_coordinator", "institute_coordinator", "it_admin"}
 MANAGE_ROLES = {"teacher", "it_admin"}
 REVIEW_ROLES = {"school_coordinator", "institute_coordinator"}
+# The roles that publish results are the ones allowed to change them.
+REGRADE_ROLES = {"school_coordinator", "institute_coordinator", "it_admin"}
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 IMAGE_MIME_TYPES = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
 
@@ -34,6 +37,13 @@ def question_in_scope(profile, question):
     if profile["key"] == "teacher":
         return question.get("autor_id") == profile.get("teacher_id")
     return question.get("instituicao_id") == profile.get("institution_id")
+
+
+def regrade_student_scope(profile):
+    """A school coordinator only changes the grades of the school's own students."""
+    if profile["key"] == "school_coordinator":
+        return {item["id"] for item in DATA["alunos"] if item["instituicao_id"] == profile.get("institution_id")}
+    return None
 
 
 def profile_institution_id(profile):
@@ -126,6 +136,7 @@ def question_form_context(profile, question, error=None):
         "authors": list(DATA["professores"]) if is_it_admin else [],
         "is_it_admin": is_it_admin,
         "error": error,
+        "graded_count": graded_answer_count(question.get("id")),
         "active_navigation": "questoes",
     }
 
@@ -196,16 +207,47 @@ def detail(question_id):
         abort(404)
     if not question_in_scope(profile, question):
         abort(403)
+    stale = (answers_graded_with_other_key(question, regrade_student_scope(profile))
+             if profile["key"] in REGRADE_ROLES else [])
     return render_template(
         "questions/detail.html",
         page_title=f"Questão {question_id.split('-')[-1]}",
         question=question,
+        stale_count=len({answer.attempt_id for answer in stale}),
+        csrf_token=csrf_token() if stale else "",
         can_edit=profile["key"] in MANAGE_ROLES and question_in_scope(profile, question),
         can_delete=profile["key"] == "it_admin",
         can_request_revision=profile["key"] in REVIEW_ROLES,
         review_history=review_history(question_id),
         active_navigation="questoes",
     )
+
+
+@questions_bp.post("/<question_id>/recorrigir")
+@login_required
+def regrade(question_id):
+    """Regrade published results that used an earlier key of this question."""
+    profile = ensure_access()
+    if profile["key"] not in REGRADE_ROLES:
+        abort(403)
+    check_csrf()
+    question = find_question(question_id)
+    if not question:
+        abort(404)
+    if not question_in_scope(profile, question):
+        abort(403)
+    if request.form.get("confirm_regrade") != "yes":
+        abort(400)
+    try:
+        corrections = regrade_question(question, request.form.get("reason", ""), profile, regrade_student_scope(profile))
+    except ValueError as error:
+        flash(str(error), "danger")
+    else:
+        changed = sum(item.details["objective"][0] != item.details["objective"][1] for item in corrections)
+        flash(f"{len(corrections)} resultado(s) recorrigido(s) com o gabarito {question['gabarito']}. "
+              f"{changed} nota(s) mudaram e esses alunos foram avisados." if corrections
+              else "Nenhum resultado precisava de recorreção.", "success")
+    return redirect(url_for("questions.detail", question_id=question_id))
 
 
 @questions_bp.route("/nova", methods=["GET", "POST"])

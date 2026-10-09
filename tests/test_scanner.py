@@ -7,10 +7,17 @@ import cv2
 import numpy as np
 import pypdfium2 as pdfium
 import pytest
+from markupsafe import escape
 
 from app import create_app
 from app.config import TestConfig
-from app.data.answer_sheets import get_batch, list_batches, sheet_for_token
+from app.data.academic import eligible_students
+from app.data.answer_sheets import decide_page, get_batch, list_batches, review_page, sheet_for_token
+from app.data.assessments import find_assessment
+from app.data.attempts import AttemptClosedError, submit_attempt
+from app.data.questions import QUESTIONS, find_question
+from app.extensions import db
+from app.models import AssessmentAttempt, AttemptCorrection, Notification
 from app.scanner.layout import PAGE_HEIGHT, PAGE_WIDTH, PIXELS_PER_MM
 
 
@@ -67,12 +74,240 @@ def printed_image(client, marks=None, filters="", card_index=0):
 def upload_image(client, image, fields=None):
     _, encoded = cv2.imencode(".png", image)
     with client.session_transaction() as session:
-        token = session["scanner_csrf"]
+        token = session["form_csrf"]
     data = {"scan_file": (BytesIO(encoded.tobytes()), "scan.png"), "csrf_token": token, **(fields or {})}
     response = client.post(SCAN_URL + "/enviar", data=data, content_type="multipart/form-data", follow_redirects=True)
     assert response.status_code == 200
     with client.application.app_context():
         return list_batches()[0]
+
+
+def result_token(client):
+    with client.session_transaction() as session:
+        return session["form_csrf"]
+
+
+def launch_form(client):
+    """Both confirmations: the grades and the students still without a scanned card."""
+    return {"csrf_token": result_token(client), "confirm_launch": "yes", "confirm_missing": "yes"}
+
+
+def test_result_preview_and_explicit_launch_publish_student_grade(scanner_client):
+    choices = {str(number): "B" for number in range(1, 9)}
+    choices["1"] = ""
+    batch = upload_image(scanner_client, printed_image(scanner_client, choices))
+    page = batch["pages"][0]
+    url = f"/cartoes-resposta/lotes/{batch['id']}/resultados"
+    preview = scanner_client.get(url)
+    assert preview.status_code == 200
+    assert "Lançar 1 resultado" in preview.get_data(as_text=True)
+    assert "em branco" in preview.get_data(as_text=True)
+    assert scanner_client.post(url + "/lancar", data={"csrf_token": result_token(scanner_client)}).status_code == 400
+    partial = scanner_client.post(url + "/lancar", data={"csrf_token": result_token(scanner_client), "confirm_launch": "yes"}, follow_redirects=True)
+    assert "alunos sem cartão lido continuarão sem nota" in partial.get_data(as_text=True)
+    with scanner_client.application.app_context():
+        assert AssessmentAttempt.query.filter_by(assessment_id=batch["assessment_id"]).count() == 0
+    response = scanner_client.post(url + "/lancar", data=launch_form(scanner_client), follow_redirects=True)
+    assert response.status_code == 200
+    assert "Resultados lan" in response.get_data(as_text=True)
+    with scanner_client.application.app_context():
+        result = AssessmentAttempt.query.filter_by(assessment_id=batch["assessment_id"], student_id=page["student_id"]).one()
+        keys = {question["id"]: question["gabarito"] for question in QUESTIONS}
+        expected = sum(answer.answer_text == keys[answer.question_id] and bool(answer.answer_text) for answer in result.answers)
+        assert result.status == "Resultado disponível"
+        assert result.objective_score == expected
+        assert result.final_score == expected
+        assert {answer.question_id: answer.answer_key for answer in result.answers} == {
+            answer.question_id: keys[answer.question_id] for answer in result.answers}
+        assert len(result.answers) == 8
+        assert sum(not answer.answer_text for answer in result.answers) == 1
+        assert get_batch(batch["id"])["status"] == "Resultados lançados"
+        assert get_batch(batch["id"])["pages"][0]["analysis"]["result_launch"]["attempt_id"] == result.id
+        assert Notification.query.filter_by(recipient_id=page["student_id"], kind="paper_result").count() == 1
+    assert scanner_client.post(url + "/lancar", data=launch_form(scanner_client), follow_redirects=True).status_code == 200
+    with scanner_client.application.app_context():
+        assert AssessmentAttempt.query.filter_by(assessment_id=batch["assessment_id"], student_id=page["student_id"]).count() == 1
+    with scanner_client.session_transaction() as session:
+        session["profile"] = "student"
+    student_result = scanner_client.get(f"/aluno/simulados/{batch['assessment_id']}/resultado")
+    assert student_result.status_code == 200
+    assert "Resultado" in student_result.get_data(as_text=True)
+
+
+def test_existing_attempt_requires_choice_and_preserves_previous_record(scanner_client):
+    batch = upload_image(scanner_client, printed_image(scanner_client))
+    page = batch["pages"][0]
+    with scanner_client.application.app_context():
+        previous = AssessmentAttempt(id="previous-paper-test", assessment_id=batch["assessment_id"], student_id=page["student_id"], status="Resultado disponível", duration_seconds=60, remaining_seconds=0, objective_score=2, final_score=2)
+        db.session.add(previous)
+        db.session.commit()
+    url = f"/cartoes-resposta/lotes/{batch['id']}/resultados"
+    assert "Já existe uma tentativa" in scanner_client.get(url).get_data(as_text=True)
+    blocked = scanner_client.post(url + "/lancar", data=launch_form(scanner_client), follow_redirects=True)
+    assert "Resolva todas as p" in blocked.get_data(as_text=True)
+    decision = f"/cartoes-resposta/lotes/{batch['id']}/paginas/{page['id']}/decidir"
+    assert scanner_client.post(decision, data={"csrf_token": result_token(scanner_client), "action": "use_card", "attempt_id": "previous-paper-test"}).status_code == 400
+    assert scanner_client.post(decision, data={"csrf_token": result_token(scanner_client), "action": "use_card", "attempt_id": "previous-paper-test", "confirm_decision": "yes"}).status_code == 302
+    assert "Lançar 1 resultado" in scanner_client.get(url).get_data(as_text=True)
+    assert scanner_client.post(url + "/lancar", data=launch_form(scanner_client)).status_code == 302
+    with scanner_client.application.app_context():
+        assert db.session.get(AssessmentAttempt, "previous-paper-test").status == "Substituída"
+        assert AssessmentAttempt.query.filter_by(assessment_id=batch["assessment_id"], student_id=page["student_id"]).count() == 2
+        launched = get_batch(batch["id"])["pages"][0]["analysis"]["result_launch"]
+        assert launched["replaced_attempt_id"] == "previous-paper-test"
+
+
+def test_keep_existing_result_ignores_card_and_restore_is_possible(scanner_client):
+    batch = upload_image(scanner_client, printed_image(scanner_client))
+    page = batch["pages"][0]
+    with scanner_client.application.app_context():
+        db.session.add(AssessmentAttempt(id="online-to-keep", assessment_id=batch["assessment_id"], student_id=page["student_id"], status="Resultado disponível", duration_seconds=60, remaining_seconds=0, objective_score=3, final_score=3))
+        db.session.commit()
+    decision = f"/cartoes-resposta/lotes/{batch['id']}/paginas/{page['id']}/decidir"
+    assert scanner_client.post(decision, data={"csrf_token": result_token(scanner_client), "action": "keep_online", "attempt_id": "online-to-keep", "confirm_decision": "yes"}).status_code == 302
+    with scanner_client.application.app_context():
+        assert get_batch(batch["id"])["pages"][0]["status"] == "Ignorada"
+        assert db.session.get(AssessmentAttempt, "online-to-keep").status == "Resultado disponível"
+    assert scanner_client.post(decision, data={"csrf_token": result_token(scanner_client), "action": "restore"}).status_code == 302
+    with scanner_client.application.app_context():
+        assert get_batch(batch["id"])["pages"][0]["status"] == "Lido"
+
+
+def test_duplicate_in_another_batch_blocks_launch_until_ignored(scanner_client):
+    image = printed_image(scanner_client)
+    first = upload_image(scanner_client, image)
+    second = upload_image(scanner_client, image)
+    first_url = f"/cartoes-resposta/lotes/{first['id']}/resultados"
+    second_page = second["pages"][0]
+    assert second_page["status"] == "Revisão"
+    assert "Há outro cartão ativo" in scanner_client.get(first_url).get_data(as_text=True)
+    decision = f"/cartoes-resposta/lotes/{second['id']}/paginas/{second_page['id']}/decidir"
+    assert scanner_client.post(decision, data={"csrf_token": result_token(scanner_client), "action": "ignore", "reason": "Duplicata", "confirm_decision": "yes"}).status_code == 302
+    assert "Lançar 1 resultado" in scanner_client.get(first_url).get_data(as_text=True)
+    assert scanner_client.post(first_url + "/lancar", data=launch_form(scanner_client)).status_code == 302
+    with scanner_client.application.app_context():
+        assert AssessmentAttempt.query.filter_by(assessment_id=first["assessment_id"], student_id=first["pages"][0]["student_id"]).count() == 1
+
+
+def test_ambiguous_mark_blocks_result_until_review(scanner_client):
+    batch = upload_image(scanner_client, printed_image(scanner_client, {"1": "AB"}))
+    page = batch["pages"][0]
+    assert page["status"] == "Revisão"
+    url = f"/cartoes-resposta/lotes/{batch['id']}/resultados"
+    assert "Confira as respostas antes do lançamento" in scanner_client.get(url).get_data(as_text=True)
+    response = scanner_client.post(url + "/lancar", data=launch_form(scanner_client), follow_redirects=True)
+    assert "Resolva todas as páginas" in response.get_data(as_text=True)
+    with scanner_client.application.app_context():
+        assert AssessmentAttempt.query.filter_by(assessment_id=batch["assessment_id"], student_id=page["student_id"]).count() == 0
+
+
+def test_preview_accounts_for_the_whole_expected_audience(scanner_client):
+    batch = upload_image(scanner_client, printed_image(scanner_client))
+    page = batch["pages"][0]
+    with scanner_client.application.app_context():
+        expected = eligible_students(find_assessment(batch["assessment_id"]), batch["scope"])
+        others = [student for student in expected if student["id"] != page["student_id"]]
+        assert len(others) >= 2
+        db.session.add(AssessmentAttempt(id="online-result", assessment_id=batch["assessment_id"], student_id=others[0]["id"], status="Resultado disponível", duration_seconds=60, remaining_seconds=0, objective_score=3, final_score=3))
+        db.session.commit()
+    url = f"/cartoes-resposta/lotes/{batch['id']}/resultados"
+    html = scanner_client.get(url).get_data(as_text=True)
+    assert f"<span>Alunos esperados</span><strong>{len(expected)}</strong>" in html
+    assert "<span>Com cartão lido</span><strong>1</strong>" in html
+    assert f"<span>Sem cartão lido</span><strong>{len(others)}</strong>" in html
+    assert str(escape(others[1]["nome"])) in html
+    assert "já tem resultado de outra forma" in html
+    # The student who already has a result does not need the absence acknowledgement.
+    absent = len(others) - 1
+    assert f"Entendo que {absent} {'aluno ficará' if absent == 1 else 'alunos ficarão'} sem nota" in html
+    assert scanner_client.post(url + "/lancar", data=launch_form(scanner_client)).status_code == 302
+    assert "<span>Com nota lançada</span><strong>1</strong>" in scanner_client.get(url).get_data(as_text=True)
+
+
+def test_review_cannot_rewrite_a_page_that_was_launched_meanwhile(scanner_client):
+    batch = upload_image(scanner_client, printed_image(scanner_client))
+    page = batch["pages"][0]
+    assert page["status"] == "Lido"
+    url = f"/cartoes-resposta/lotes/{batch['id']}/resultados"
+    assert scanner_client.post(url + "/lancar", data=launch_form(scanner_client)).status_code == 302
+    # A reviewer who opened the form before the launch submits afterwards; the
+    # data layer re-checks the page inside its own lock instead of trusting the route.
+    with scanner_client.application.app_context():
+        with pytest.raises(ValueError, match="mudou"):
+            review_page(batch["id"], page["id"], {"1": "A"}, {"account_id": "late-reviewer"})
+        with pytest.raises(ValueError, match="mudou"):
+            decide_page(batch["id"], page["id"], "Ignorada", {}, "Desconsiderada.", expected_status="Lido")
+        stored = get_batch(batch["id"])["pages"][0]
+        assert stored["status"] == "Lançado"
+        assert stored["detected_answers"] == page["detected_answers"]
+        assert "reviews" not in stored["analysis"]
+        assert get_batch(batch["id"])["status"] == "Resultados lançados"
+
+
+def test_online_attempt_replaced_by_the_card_cannot_be_submitted_again(scanner_client):
+    batch = upload_image(scanner_client, printed_image(scanner_client))
+    page = batch["pages"][0]
+    with scanner_client.application.app_context():
+        db.session.add(AssessmentAttempt(id="online-open", assessment_id=batch["assessment_id"], student_id=page["student_id"], status="Em andamento", duration_seconds=3600, remaining_seconds=3600))
+        db.session.commit()
+    decision = f"/cartoes-resposta/lotes/{batch['id']}/paginas/{page['id']}/decidir"
+    assert scanner_client.post(decision, data={"csrf_token": result_token(scanner_client), "action": "use_card", "attempt_id": "online-open", "confirm_decision": "yes"}).status_code == 302
+    url = f"/cartoes-resposta/lotes/{batch['id']}/resultados"
+    assert scanner_client.post(url + "/lancar", data=launch_form(scanner_client)).status_code == 302
+    # The student's browser still holds the open attempt and submits it after the launch.
+    with scanner_client.application.app_context():
+        attempt = db.session.get(AssessmentAttempt, "online-open")
+        questions = [find_question(question_id) for question_id in find_assessment(batch["assessment_id"])["question_ids"]]
+        with pytest.raises(AttemptClosedError):
+            submit_attempt(attempt, questions, {f"resposta_{question['id']}": "A" for question in questions})
+        assert db.session.get(AssessmentAttempt, "online-open").status == "Substituída"
+        active = AssessmentAttempt.query.filter(AssessmentAttempt.assessment_id == batch["assessment_id"], AssessmentAttempt.student_id == page["student_id"], AssessmentAttempt.status != "Substituída").all()
+        assert [item.status for item in active] == ["Resultado disponível"]
+
+
+def test_misread_launched_card_is_rectified_in_place_with_reason_and_history(scanner_client):
+    batch = upload_image(scanner_client, printed_image(scanner_client))
+    page = batch["pages"][0]
+    url = f"/cartoes-resposta/lotes/{batch['id']}/resultados"
+    rectify = f"/cartoes-resposta/lotes/{batch['id']}/paginas/{page['id']}/retificar"
+    assert scanner_client.get(rectify).status_code == 404
+    assert scanner_client.post(url + "/lancar", data=launch_form(scanner_client)).status_code == 302
+    with scanner_client.application.app_context():
+        launch = get_batch(batch["id"])["pages"][0]["analysis"]["result_launch"]
+        attempt_id, before = launch["attempt_id"], launch["score"]
+    # Every card was read as "B"; the first question whose key is not "B" was actually marked right.
+    fixed = next(item for item in launch["answers"] if item["key"] != "B")
+    answers = {f"answer_{item['number']}": item["answer"] for item in launch["answers"]}
+    answers[f"answer_{fixed['number']}"] = fixed["key"]
+
+    form = scanner_client.get(rectify).get_data(as_text=True)
+    assert "Este resultado já foi publicado" in form and "Motivo da retificação" in form
+    assert scanner_client.get(f"/cartoes-resposta/lotes/{batch['id']}/paginas/{page['id']}/revisar").status_code == 404
+    short = scanner_client.post(rectify, data={**answers, "csrf_token": result_token(scanner_client), "confirm_review": "yes", "reason": "x"}, follow_redirects=True)
+    assert "Explique o motivo" in short.get_data(as_text=True)
+    reason = "Marcação da questão lida como B no cartão original."
+    done = scanner_client.post(rectify, data={**answers, "csrf_token": result_token(scanner_client), "confirm_review": "yes", "reason": reason}, follow_redirects=True)
+    assert f"Resultado retificado: {before} → {before + 1} acertos" in done.get_data(as_text=True)
+    assert "Resultado retificado · último em" in done.get_data(as_text=True)
+    with scanner_client.application.app_context():
+        attempts = AssessmentAttempt.query.filter_by(assessment_id=batch["assessment_id"], student_id=page["student_id"]).all()
+        assert [item.id for item in attempts] == [attempt_id]
+        assert attempts[0].final_score == before + 1
+        correction = AttemptCorrection.query.filter_by(attempt_id=attempt_id).one()
+        assert correction.kind == "leitura" and correction.reason == reason
+        assert correction.details["objective"] == [before, before + 1]
+        assert correction.details["changes"] == [{"question_id": fixed["question_id"], "answer": ["B", fixed["key"]],
+                                                  "key": [fixed["key"], fixed["key"]], "correct": [False, True]}]
+        stored = get_batch(batch["id"])["pages"][0]
+        assert stored["status"] == "Lançado"
+        assert stored["detected_answers"][str(fixed["number"])] == fixed["key"]
+        assert stored["analysis"]["rectifications"][0]["previous"][str(fixed["number"])] == "B"
+        assert stored["analysis"]["result_launch"]["score"] == before
+        assert Notification.query.filter_by(recipient_id=page["student_id"], kind="result_rectified").count() == 1
+    same = scanner_client.post(rectify, data={**answers, "csrf_token": result_token(scanner_client), "confirm_review": "yes", "reason": reason}, follow_redirects=True)
+    assert "Nenhuma resposta mudou" in same.get_data(as_text=True)
+    with scanner_client.application.app_context():
+        assert AttemptCorrection.query.filter_by(attempt_id=attempt_id).count() == 1
 
 
 def test_actual_printed_coordinates_identify_student_and_all_responses(scanner_client):
@@ -111,16 +346,30 @@ def test_scanner_distortions_are_aligned_before_reading(scanner_client, distorti
     assert set(page["detected_answers"].values()) == {"B"}
 
 
-@pytest.mark.parametrize("marks,state", [({}, "em_branco"), ({"1": "AB"}, "multipla"), ({"1": ("B", 180)}, "duvidosa"), ({"1": ("B", 222)}, "duvidosa")])
-def test_blank_double_faint_and_erased_marks_are_never_accepted(scanner_client, marks, state):
+@pytest.mark.parametrize("marks,state", [({"1": "AB"}, "multipla"), ({"1": ("B", 180)}, "duvidosa"), ({"1": ("B", 222)}, "duvidosa")])
+def test_double_faint_and_erased_marks_require_review(scanner_client, marks, state):
     choices = {str(number): "B" for number in range(1, 9)}
     choices.update(marks)
-    if not marks:
-        choices = {}
     page = upload_image(scanner_client, printed_image(scanner_client, choices))["pages"][0]
     assert page["status"] == "Revisão"
     assert page["analysis"]["questions"]["1"]["state"] == state
     assert page["confidence"] < .80
+
+
+def test_blank_answer_is_flagged_but_does_not_block_the_page(scanner_client):
+    choices = {str(number): "B" for number in range(1, 9)}
+    choices["1"] = ""
+    batch = upload_image(scanner_client, printed_image(scanner_client, choices))
+    page = batch["pages"][0]
+    assert page["status"] == "Lido"
+    assert page["detected_answers"]["1"] == ""
+    assert page["analysis"]["questions"]["1"]["state"] == "em_branco"
+    assert "Questão 1: sem marcação" in page["issue"]
+    assert page["confidence"] >= .80
+    route = f"/cartoes-resposta/lotes/{batch['id']}/paginas/{page['id']}/revisar"
+    html = scanner_client.get(route).get_data(as_text=True)
+    assert 'data-aligned-src=' in html
+    assert "Em branco fica sem ponto" in html
 
 
 def test_missing_corner_does_not_fall_back_to_guessing_coordinates(scanner_client):
@@ -180,7 +429,7 @@ def test_manual_review_keeps_original_reading_and_reviewer(scanner_client):
     route = f"/cartoes-resposta/lotes/{batch['id']}/paginas/{page['id']}/revisar"
     assert scanner_client.get(route).status_code == 200
     with scanner_client.session_transaction() as session:
-        csrf = session["scanner_csrf"]
+        csrf = session["form_csrf"]
     data = {"csrf_token": csrf, "confirm_review": "yes", **{f"answer_{n}": "B" for n in range(1, 9)}}
     response = scanner_client.post(route, data=data, follow_redirects=True)
     assert response.status_code == 200
@@ -198,9 +447,43 @@ def test_qr_garbage_is_rejected_without_throwing(scanner_client):
         assert sheet_for_token("IFP1.11111111-1111-1111-1111-111111111111.é") is None
 
 
+def test_unreadable_qr_can_be_linked_only_after_enrollment_confirmation(scanner_client):
+    image = printed_image(scanner_client)
+    image[19 * PIXELS_PER_MM:48 * PIXELS_PER_MM,
+          161 * PIXELS_PER_MM:190 * PIXELS_PER_MM] = 255
+    batch = upload_image(scanner_client, image)
+    page = batch["pages"][0]
+    assert page["status"] == "Falha"
+    assert page["analysis"]["failure_reason"] == "qr_unreadable"
+    assert page["analysis"]["quality"]["aligned"]
+    route = f"/cartoes-resposta/lotes/{batch['id']}/paginas/{page['id']}/identificar"
+    html = scanner_client.get(route).get_data(as_text=True)
+    assert "Ana Clara Souza" in html
+    with scanner_client.session_transaction() as session:
+        csrf = session["form_csrf"]
+    wrong = scanner_client.post(route, data={
+        "csrf_token": csrf, "student_id": "alu-001", "enrollment": "incorreta", "confirm_identity": "yes",
+    })
+    assert wrong.status_code == 200
+    with scanner_client.application.app_context():
+        assert get_batch(batch["id"])["pages"][0]["status"] == "Falha"
+    response = scanner_client.post(route, data={
+        "csrf_token": csrf, "student_id": "alu-001", "enrollment": "2026001", "confirm_identity": "yes",
+    }, follow_redirects=True)
+    assert response.status_code == 200
+    assert "Conferir cartão" in response.get_data(as_text=True)
+    with scanner_client.application.app_context():
+        linked = get_batch(batch["id"])["pages"][0]
+    assert linked["status"] == "Revisão"
+    assert linked["student_id"] == "alu-001"
+    assert linked["analysis"]["manual_identification"]["reviewer"] == "usr-005"
+    assert linked["detected_answers"] == {str(number): "B" for number in range(1, 9)}
+    assert scanner_client.get(route).status_code == 404
+
+
 def test_invalid_upload_does_not_leave_a_processing_batch(scanner_client):
     with scanner_client.session_transaction() as session:
-        csrf = session["scanner_csrf"]
+        csrf = session["form_csrf"]
     response = scanner_client.post(SCAN_URL + "/enviar", data={"csrf_token": csrf, "scan_file": (BytesIO(b"not-a-pdf"), "fake.pdf")}, follow_redirects=True)
     assert response.status_code == 200
     with scanner_client.application.app_context():
@@ -231,7 +514,7 @@ def test_pdf_batch_reads_each_student_and_flags_duplicate_pages(scanner_client):
     second = printed_image(scanner_client, card_index=1)
     data = pdf_from_images([first, second, first])
     with scanner_client.session_transaction() as session:
-        csrf = session["scanner_csrf"]
+        csrf = session["form_csrf"]
     response = scanner_client.post(SCAN_URL + "/enviar", data={
         "csrf_token": csrf, "scan_file": (BytesIO(data), "batch.pdf"),
     }, follow_redirects=True)
@@ -273,7 +556,7 @@ def test_jpeg_over_original_global_limit_reaches_scanner_validation(scanner_clie
     # A 17 MB file used to hit Flask's global 16 MB cap despite the UI's 50 MB promise.
     scanner_client.application.config["SCAN_UPLOAD_MAX_BYTES"] = 18 * 1024 * 1024
     with scanner_client.session_transaction() as session:
-        csrf = session["scanner_csrf"]
+        csrf = session["form_csrf"]
     response = scanner_client.post(SCAN_URL + "/enviar", data={
         "csrf_token": csrf, "scan_file": (BytesIO(b"x" * (17 * 1024 * 1024)), "broken.jpg"),
     }, follow_redirects=True)
@@ -290,7 +573,7 @@ def test_scan_upload_and_manual_review_require_form_token(scanner_client):
 
 def test_upload_without_previously_issued_token_rejects_placeholder(scanner_client):
     with scanner_client.session_transaction() as session:
-        session.pop("scanner_csrf")
+        session.pop("form_csrf")
     response = scanner_client.post(SCAN_URL + "/enviar", data={"csrf_token": "missing"})
     assert response.status_code == 400
 
@@ -344,3 +627,27 @@ def test_demo_mode_can_process_and_review_without_a_database(tmp_path):
     client.get("/cartoes-resposta/")
     page = upload_image(client, printed_image(client))["pages"][0]
     assert page["status"] == "Lido"
+
+
+def test_demo_mode_can_identify_a_page_with_unreadable_qr(tmp_path):
+    class DemoConfig(TestConfig):
+        DATABASE_ENABLED = False
+        SCAN_ROOT = str(tmp_path)
+
+    client = create_app(DemoConfig).test_client()
+    with client.session_transaction() as session:
+        session["profile"] = "school_coordinator"
+    client.get("/cartoes-resposta/")
+    image = printed_image(client)
+    image[19 * PIXELS_PER_MM:48 * PIXELS_PER_MM,
+          161 * PIXELS_PER_MM:190 * PIXELS_PER_MM] = 255
+    batch = upload_image(client, image)
+    page = batch["pages"][0]
+    with client.session_transaction() as session:
+        csrf = session["form_csrf"]
+    response = client.post(f"/cartoes-resposta/lotes/{batch['id']}/paginas/{page['id']}/identificar", data={
+        "csrf_token": csrf, "student_id": "alu-001", "enrollment": "2026001", "confirm_identity": "yes",
+    })
+    assert response.status_code == 302
+    with client.application.app_context():
+        assert get_batch(batch["id"])["pages"][0]["status"] == "Revisão"

@@ -37,19 +37,25 @@ def _per_request(name, load):
 def _load_scores_by_student():
     try:
         from ..extensions import db
-        from ..models import AssessmentAttempt
+        from ..models import AssessmentAttempt, AttemptAnswer
         from .assessments import ASSESSMENTS
 
         question_counts = {item["id"]: max(1, len(item.get("question_ids", []))) for item in ASSESSMENTS}
-        rows = db.session.execute(db.select(AssessmentAttempt.student_id, AssessmentAttempt.assessment_id, AssessmentAttempt.final_score).where(
-            AssessmentAttempt.status == "Resultado disponível",
-            AssessmentAttempt.final_score.isnot(None),
-        )).all()
+        graded = (db.select(AttemptAnswer.attempt_id, db.func.count(AttemptAnswer.id).label("total"))
+                  .group_by(AttemptAnswer.attempt_id).subquery())
+        rows = db.session.execute(
+            db.select(AssessmentAttempt.student_id, AssessmentAttempt.assessment_id, AssessmentAttempt.final_score, graded.c.total)
+            .outerjoin(graded, graded.c.attempt_id == AssessmentAttempt.id)
+            .where(AssessmentAttempt.status == "Resultado disponível", AssessmentAttempt.final_score.isnot(None))
+        ).all()
     except (RuntimeError, AttributeError):
         return {}
     scores = {}
-    for student_id, assessment_id, final_score in rows:
-        scores.setdefault(student_id, []).append(min(10, round(final_score / question_counts.get(assessment_id, 1) * 10, 1)))
+    for student_id, assessment_id, final_score, total in rows:
+        # Every graded question is worth one point, so the questions the attempt was graded
+        # on are its scale; editing the assessment afterwards must not move a published grade.
+        scale = total or question_counts.get(assessment_id, 1)
+        scores.setdefault(student_id, []).append(min(10, round(final_score / scale * 10, 1)))
     return scores
 
 

@@ -77,6 +77,19 @@ def get_sheet(sheet_id):
     return next((deepcopy(item) for item in _demo_store()["sheets"] if item["id"] == sheet_id), None)
 
 
+def find_sheets(assessment_id, student_id=None):
+    if _database_active():
+        from ..models import AnswerSheet
+
+        query = AnswerSheet.query.filter_by(assessment_id=assessment_id)
+        if student_id is not None:
+            query = query.filter_by(student_id=student_id)
+        return [_sheet_record(item) for item in query.all()]
+    return [deepcopy(item) for item in _demo_store()["sheets"]
+            if item["assessment_id"] == assessment_id
+            and (student_id is None or item["student_id"] == student_id)]
+
+
 def sheet_for_token(token):
     parts = (token or "").split(".")
     if len(parts) != 3 or parts[0] != "IFP1":
@@ -100,6 +113,15 @@ def sheet_for_token(token):
     return sheet
 
 
+def _page_record(model):
+    return {
+        "id": model.id, "page_number": model.page_number, "answer_sheet_id": model.answer_sheet_id,
+        "student_id": model.student_id, "status": model.status, "image_path": model.image_path,
+        "detected_answers": dict(model.detected_answers or {}), "confidence": model.confidence,
+        "issue": model.issue, "analysis": deepcopy(model.analysis or {}),
+    }
+
+
 def _batch_record(model):
     return {
         "id": model.id, "assessment_id": model.assessment_id, "original_name": model.original_name,
@@ -109,12 +131,7 @@ def _batch_record(model):
         "error_message": model.error_message or "", "created_by_role": model.created_by_role,
         "created_by_id": model.created_by_id,
         "created_at": model.created_at.strftime("%d/%m/%Y às %H:%M"),
-        "pages": [{
-            "id": page.id, "page_number": page.page_number, "answer_sheet_id": page.answer_sheet_id,
-            "student_id": page.student_id, "status": page.status, "image_path": page.image_path,
-            "detected_answers": dict(page.detected_answers or {}), "confidence": page.confidence,
-            "issue": page.issue, "analysis": deepcopy(page.analysis or {}),
-        } for page in sorted(model.pages, key=lambda item: item.page_number)],
+        "pages": [_page_record(page) for page in sorted(model.pages, key=lambda item: item.page_number)],
     }
 
 
@@ -156,18 +173,25 @@ def add_batch_page(batch_id, values):
     return page_id
 
 
-def finish_batch(batch_id, error_message=""):
-    batch = get_batch(batch_id)
-    statuses = [page["status"] for page in batch["pages"]]
+def batch_status_values(statuses, error_message=""):
     values = {
-        "page_count": len(statuses), "processed_count": statuses.count("Lido") + statuses.count("Conferido"),
+        "page_count": len(statuses),
+        "processed_count": sum(statuses.count(status) for status in ("Lido", "Conferido", "Lançado")),
         "review_count": statuses.count("Revisão"), "failed_count": statuses.count("Falha"),
         "error_message": error_message[:300],
     }
     values["status"] = (
         "Falha no processamento" if error_message else
-        "Revisão necessária" if values["review_count"] or values["failed_count"] else "Concluído"
+        "Revisão necessária" if values["review_count"] or values["failed_count"] else
+        "Resultados lançados" if "Lançado" in statuses and not any(status in {"Lido", "Conferido"} for status in statuses)
+        else "Concluído"
     )
+    return values
+
+
+def finish_batch(batch_id, error_message=""):
+    batch = get_batch(batch_id)
+    values = batch_status_values([page["status"] for page in batch["pages"]], error_message)
     if _database_active():
         from ..extensions import db
         from ..models import AnswerScanBatch
@@ -181,29 +205,88 @@ def finish_batch(batch_id, error_message=""):
     return get_batch(batch_id)
 
 
-def review_page(batch_id, page_id, answers, profile):
-    batch = get_batch(batch_id)
-    page = next(item for item in batch["pages"] if item["id"] == page_id)
-    analysis = deepcopy(page.get("analysis", {}))
-    analysis.setdefault("original_answers", dict(page["detected_answers"]))
-    analysis.setdefault("reviews", []).append({
-        "answers": answers, "reviewer": profile.get("account_id", "global"),
-        "at": datetime.now(UTC).isoformat(),
-    })
+STALE_PAGE = "Esta página mudou enquanto você decidia. Atualize a prévia e refaça a escolha."
+REVIEWABLE_STATES = ("Lido", "Revisão", "Conferido")
+
+
+def _transition_page(batch_id, page_id, expected_statuses, build):
+    """Lock the page and its batch, refuse a stale decision and recount the batch in one transaction.
+
+    `build` receives the page as it is inside the lock, so nothing read before the
+    lock can overwrite a decision another reviewer saved in the meantime.
+    """
     if _database_active():
         from ..extensions import db
-        from ..models import AnswerScanPage
+        from ..models import AnswerScanBatch, AnswerScanPage
 
-        model = db.session.get(AnswerScanPage, page_id)
-        model.detected_answers = answers
-        model.analysis = analysis
-        model.status = "Conferido"
-        db.session.commit()
-    else:
-        stored_batch = next(item for item in _demo_store()["batches"] if item["id"] == batch_id)
-        stored_page = next(item for item in stored_batch["pages"] if item["id"] == page_id)
-        stored_page.update({"detected_answers": answers, "analysis": analysis, "status": "Conferido"})
-    return finish_batch(batch_id, batch.get("error_message", ""))
+        try:
+            batch_model = AnswerScanBatch.query.filter_by(id=batch_id).populate_existing().with_for_update().one_or_none()
+            model = (AnswerScanPage.query.filter_by(id=page_id, batch_id=batch_id)
+                     .populate_existing().with_for_update().one_or_none())
+            if not batch_model or not model:
+                raise ValueError("Página não encontrada.")
+            if model.status == "Lançado" or model.status not in expected_statuses:
+                raise ValueError(STALE_PAGE)
+            for key, value in build(_page_record(model)).items():
+                setattr(model, key, value)
+            statuses = [page.status for page in AnswerScanPage.query.filter_by(batch_id=batch_id).all()]
+            for key, value in batch_status_values(statuses, batch_model.error_message or "").items():
+                setattr(batch_model, key, value)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+        return get_batch(batch_id)
+    stored_batch = next((item for item in _demo_store()["batches"] if item["id"] == batch_id), None)
+    stored_page = next((item for item in (stored_batch or {}).get("pages", []) if item["id"] == page_id), None)
+    if not stored_page:
+        raise ValueError("Página não encontrada.")
+    if stored_page["status"] == "Lançado" or stored_page["status"] not in expected_statuses:
+        raise ValueError(STALE_PAGE)
+    stored_page.update(deepcopy(build(deepcopy(stored_page))))
+    statuses = [item["status"] for item in stored_batch["pages"]]
+    stored_batch.update(batch_status_values(statuses, stored_batch.get("error_message", "")))
+    return get_batch(batch_id)
+
+
+def decide_page(batch_id, page_id, status, analysis, issue, expected_status):
+    """Persist a review decision while keeping the original scan and its audit history."""
+    def build(_page):
+        return {"status": status, "analysis": deepcopy(analysis), "issue": (issue or "")[:300]}
+
+    return _transition_page(batch_id, page_id, {expected_status}, build)
+
+
+def review_page(batch_id, page_id, answers, profile):
+    def build(page):
+        analysis = page["analysis"]
+        analysis.setdefault("original_answers", dict(page["detected_answers"]))
+        analysis.setdefault("reviews", []).append({
+            "answers": answers, "reviewer": profile.get("account_id", "global"),
+            "at": datetime.now(UTC).isoformat(),
+        })
+        return {"detected_answers": dict(answers), "analysis": analysis, "status": "Conferido"}
+
+    return _transition_page(batch_id, page_id, set(REVIEWABLE_STATES), build)
+
+
+def identify_page(batch_id, page_id, sheet, answers, confidence, analysis, overlay_path, profile):
+    def build(_page):
+        updated_analysis = deepcopy(analysis)
+        updated_analysis["overlay_path"] = overlay_path
+        updated_analysis["original_answers"] = dict(answers)
+        updated_analysis["manual_identification"] = {
+            "student_id": sheet["student_id"], "sheet_id": sheet["id"],
+            "reviewer": profile.get("account_id", "global"), "at": datetime.now(UTC).isoformat(),
+        }
+        return {
+            "answer_sheet_id": sheet["id"], "student_id": sheet["student_id"],
+            "status": "Revisão", "detected_answers": dict(answers), "confidence": confidence,
+            "issue": "QR ilegível; estudante identificado manualmente. Confira todas as respostas.",
+            "analysis": updated_analysis,
+        }
+
+    return _transition_page(batch_id, page_id, {"Falha"}, build)
 
 
 def get_batch(batch_id):

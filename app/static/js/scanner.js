@@ -7,7 +7,7 @@ document.querySelectorAll('[data-scanner-filters]').forEach((form) => {
     for (const option of schoolClass.options) {
       if (!option.value) continue;
       option.hidden = Boolean(
-        (institution.value && option.dataset.institution !== institution.value) ||
+        (institution?.value && option.dataset.institution !== institution.value) ||
         (series.value && option.dataset.series !== series.value) ||
         (year.value && option.dataset.year !== year.value)
       );
@@ -15,7 +15,7 @@ document.querySelectorAll('[data-scanner-filters]').forEach((form) => {
     }
     if (schoolClass.selectedOptions[0]?.disabled) schoolClass.value = '';
   };
-  institution.addEventListener('change', () => {
+  institution?.addEventListener('change', () => {
     series.value = '';
     year.value = '';
     schoolClass.value = '';

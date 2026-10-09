@@ -12,6 +12,18 @@
     </ol>{% else %}<div class="open-answer-guidance"><strong>Orientação para correção</strong><p>{{ (question.resposta_esperada or 'Nenhuma orientação foi informada.')|question_text }}</p></div>{% endif %}
     <div class="explanation"><strong>Resolução esperada</strong><p>{{ (question.explicacao or 'Nenhuma resolução foi informada.')|question_text }}</p></div>
   </article>
+  {% if stale_count %}
+  <section class="regrade-panel" id="recorrecao" aria-labelledby="regrade-title">
+    <h2 id="regrade-title">Notas corrigidas com um gabarito anterior</h2>
+    <p>{{ stale_count }} {{ 'resultado publicado usa' if stale_count == 1 else 'resultados publicados usam' }} outro gabarito nesta questão. O gabarito atual é <strong>{{ question.gabarito }}</strong>. Recorrigir muda só esta questão; a nota anterior fica no histórico.</p>
+    <form method="post" action="{{ url_for('questions.regrade', question_id=question.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="field"><label for="regrade-reason">Motivo da recorreção</label><textarea id="regrade-reason" name="reason" rows="3" minlength="5" maxlength="500" required aria-describedby="regrade-reason-help"></textarea><small id="regrade-reason-help">Os alunos cuja nota mudar recebem um aviso com este motivo.</small></div>
+      <label class="regrade-panel__confirm"><input type="checkbox" name="confirm_regrade" value="yes" required> Recorrigir {{ 'esse resultado' if stale_count == 1 else 'esses resultados' }} com o gabarito {{ question.gabarito }}</label>
+      <button class="button button--primary" type="submit">Recorrigir {{ stale_count }} {{ 'resultado' if stale_count == 1 else 'resultados' }}</button>
+    </form>
+  </section>
+  {% endif %}
   {% if review_history %}<section class="review-history"><div class="section-heading"><div><h2>Histórico da revisão</h2><p>Registro das movimentações desta questão.</p></div></div><ol>{% for event in review_history %}<li><span>{{ event.created_at.strftime('%d/%m/%Y às %H:%M') }}</span><strong>{{ event.status }}</strong><p>{{ event.actor_name }}{% if event.note %} · {{ event.note }}{% endif %}</p></li>{% endfor %}</ol></section>{% endif %}
   {% if can_request_revision %}<dialog class="site-dialog site-dialog--warning" data-question-revision-dialog aria-labelledby="question-revision-title"><div class="site-dialog__mark" aria-hidden="true">!</div><h2 id="question-revision-title">Solicitar revisão</h2><p data-question-revision-message>Explique ao professor o que precisa ser ajustado.</p><form method="post" data-question-revision-form><div class="field"><label for="revision-note-detail">Orientação para o professor</label><textarea id="revision-note-detail" name="observacao" rows="4" required placeholder="Descreva de forma objetiva o ajuste necessário."></textarea></div><div class="dialog-actions"><button class="button button--secondary" type="button" data-question-revision-close>Cancelar</button><button class="button button--primary" type="submit">Enviar solicitação</button></div></form></dialog>{% endif %}
   {% if can_delete %}{{ admin_delete_dialog() }}{% endif %}

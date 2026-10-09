@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+  <header class="page-header">
+    <div>
+      <p class="breadcrumb"><a href="{{ url_for('scanner.batch_detail', batch_id=batch.id) }}">Lote {{ batch.original_name }}</a> <span aria-hidden="true">/</span> Identificação</p>
+      <h1>Identificar cartão sem QR legível</h1>
+      <p>Página {{ page.page_number }} · tente digitalizar novamente antes de fazer o vínculo manual.</p>
+    </div>
+    <a class="button button--secondary" href="{{ url_for('scanner.batch_detail', batch_id=batch.id) }}">Voltar ao lote</a>
+  </header>
+
+  <div class="scan-review-layout">
+    <section class="scan-identify-image" aria-label="Cartão digitalizado">
+      <h2>Confira os dados impressos</h2>
+      <a href="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id, variant='original') }}" target="_blank" rel="noopener">
+        <img src="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id) }}" alt="Cartão digitalizado da página {{ page.page_number }}">
+      </a>
+      <p>Abra a imagem para ampliar. Confira nome, matrícula e título do simulado: {{ assessment.titulo }}. Se o cartão estiver girado ou cortado, digitalize novamente.</p>
+    </section>
+
+    <section class="scan-identify-form">
+      <h2>Vínculo manual</h2>
+      <p>Selecione o aluno somente se os dados impressos estiverem legíveis e coincidirem com os do cadastro. A página ainda precisará de conferência das respostas.</p>
+      {% if candidates %}
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label for="scan-student">Aluno</label>
+          <select id="scan-student" name="student_id" required>
+            <option value="">Selecione</option>
+            {% for student in candidates %}<option value="{{ student.id }}"{% if request.form.get('student_id') == student.id %} selected{% endif %}>{{ student.nome }} · {{ student.matricula }}</option>{% endfor %}
+          </select>
+          <label for="scan-enrollment">Matrícula impressa no cartão</label>
+          <input id="scan-enrollment" name="enrollment" value="{{ request.form.get('enrollment', '') }}" autocomplete="off" required>
+          <label class="scan-review-confirm"><input type="checkbox" name="confirm_identity" value="yes" required>Conferi nome, matrícula e simulado na imagem do cartão.</label>
+          <button class="button button--primary" type="submit">Vincular e conferir respostas</button>
+        </form>
+      {% else %}
+        <p>Não há cartão emitido e disponível para vínculo neste público. Digitalize novamente ou confira a emissão dos cartões.</p>
+      {% endif %}
+      <a class="button button--quiet" href="{{ url_for('scanner.index', assessment_id=assessment.id, **batch.scope) }}">Enviar nova digitalização</a>
+    </section>
+  </div>
+{% endblock %}

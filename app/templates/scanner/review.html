@@ -1,9 +1,90 @@
 {% extends "base.html" %}
 {% block content %}
-  <header class="page-header"><div><p class="breadcrumb"><a href="{{ url_for('scanner.batch_detail', batch_id=batch.id) }}">Lote {{ batch.original_name }}</a> <span aria-hidden="true">/</span> Conferência</p><h1>{{ student.nome if student else 'Conferir cartão' }}</h1><p>Página {{ page.page_number }} · compare a digitalização com cada resposta.</p></div><a class="button button--secondary" href="{{ url_for('scanner.batch_detail', batch_id=batch.id) }}">Voltar ao lote</a></header>
-  <div class="scan-review-layout"><div class="scan-review-image"><a href="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id) }}" target="_blank"><img src="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id, variant='reading') }}" alt="Cartão digitalizado com as bolhas destacadas"></a><p>Abra a imagem para ampliar.</p>{% for issue in page.analysis.get('issues', page.analysis.get('quality', {}).get('issues', [])) %}<p class="scan-review-issue">{{ issue }}</p>{% endfor %}</div>
-  <form class="scan-review-form" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    {% for question in manifest %}{% set number = question.number|string %}{% set diagnostic = page.analysis.get('questions', {}).get(number, {}) %}<fieldset class="scan-review-question{% if diagnostic.get('state') != 'marcada' %} needs-review{% endif %}"><legend>Questão {{ question.number }}{% if diagnostic %}<small>{{ {'marcada': 'Leitura nítida', 'duvidosa': 'Marca duvidosa', 'multipla': 'Marcação múltipla', 'em_branco': 'Em branco', 'desalinhada': 'Alinhamento incerto'}.get(diagnostic.state, 'Conferir') }}</small>{% endif %}</legend><div>{% for letter in [''] + question.options %}<label><input type="radio" name="answer_{{ question.number }}" value="{{ letter }}"{% if page.detected_answers.get(number, '') == letter %} checked{% endif %}>{{ letter or 'Em branco / anulada' }}</label>{% endfor %}</div></fieldset>{% endfor %}
-    <label class="scan-review-confirm"><input type="checkbox" name="confirm_review" value="yes" required>Conferi as respostas na imagem digitalizada.</label><button class="button button--primary" type="submit">Salvar conferência</button><p class="scanner-note">A leitura automática e o histórico de conferência são preservados. Esta ação ainda não publica notas.</p>
-  </form></div>
+  <header class="page-header">
+    <div>
+      <p class="breadcrumb"><a href="{{ url_for('scanner.batch_detail', batch_id=batch.id) }}">Lote {{ batch.original_name }}</a> <span aria-hidden="true">/</span> {{ 'Retificação' if rectify else 'Conferência' }}</p>
+      <h1>{{ student.nome if student else 'Conferir cartão' }}</h1>
+      <p>Página {{ page.page_number }} · use a lupa no cartão para conferir as respostas ao lado.</p>
+    </div>
+    <a class="button button--secondary" href="{{ url_for('scanner.batch_detail', batch_id=batch.id) }}">Voltar ao lote</a>
+  </header>
+
+  <div class="scan-review-layout" data-scan-review>
+    <section class="scan-review-image" aria-label="Cartão digitalizado">
+      <div class="scan-review-image__heading">
+        <h2>Cartão-resposta</h2>
+        <a href="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id) }}" target="_blank" rel="noopener" data-tooltip="Abre a imagem sem marcações em uma nova aba.">Abrir imagem completa</a>
+      </div>
+      <p id="scan-magnifier-help">Passe o mouse sobre o cartão para ampliar. No celular, toque na área que deseja conferir.</p>
+      <div class="scan-card-frame">
+        <div class="scan-magnifier-surface" data-scan-magnifier tabindex="0" role="group"
+             aria-label="Cartão com lupa de três vezes" aria-describedby="scan-magnifier-help scan-magnifier-keyboard">
+          <img class="scan-review-card" src="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id, variant='reading') }}"
+               data-aligned-src="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id) }}"
+               alt="Cartão digitalizado com as bolhas destacadas" draggable="false">
+          <canvas class="scan-magnifier-lens" data-scan-lens aria-hidden="true" hidden></canvas>
+        </div>
+      </div>
+      <span id="scan-magnifier-keyboard" class="sr-only">Use as setas do teclado para mover a lupa. Pressione Escape para fechá-la e Enter para abri-la novamente.</span>
+      <p class="scan-magnifier-note" data-scan-magnifier-status role="status">A lupa mostra a imagem sem as marcações coloridas.</p>
+    </section>
+
+    <form class="scan-review-form" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="scan-review-guidance">
+        <h2>Respostas</h2>
+        {% if rectify %}
+          <p><strong>Este resultado já foi publicado.</strong> Corrija apenas o que foi lido errado no cartão. A nota nova substitui a anterior, o aluno é avisado e a nota anterior fica no histórico.</p>
+        {% else %}
+          <p>Em branco fica sem ponto e pode ser corrigida aqui. Marcas duvidosas, rasuras suspeitas e múltiplas marcações precisam da sua conferência.</p>
+        {% endif %}
+      </div>
+      {% if rectify and page.analysis.get('rectifications') %}
+        <details class="scan-review-alerts">
+          <summary>Retificações anteriores ({{ page.analysis.rectifications|length }})</summary>
+          {% for item in page.analysis.rectifications %}<p>{{ item.at[:10] }} · {{ item.reason }}</p>{% endfor %}
+        </details>
+      {% endif %}
+      {% set scan_issues = page.analysis.get('issues', page.analysis.get('quality', {}).get('issues', [])) %}
+      {% if scan_issues %}
+        <details class="scan-review-alerts"{% if page.status == 'Revisão' %} open{% endif %}>
+          <summary>Observações sobre a digitalização</summary>
+          {% for issue in scan_issues %}<p>{{ issue }}</p>{% endfor %}
+        </details>
+      {% endif %}
+      {% for question in manifest %}
+        {% set number = question.number|string %}
+        {% set diagnostic = page.analysis.get('questions', {}).get(number, {}) %}
+        {% set state = diagnostic.get('state', '') %}
+        <fieldset class="scan-review-question{% if state in ['duvidosa', 'multipla', 'desalinhada'] %} needs-review{% elif state == 'em_branco' %} is-blank{% endif %}">
+          <legend>Questão {{ question.number }}</legend>
+          <div class="scan-review-question__heading">
+            <span class="scan-review-state">
+              {{ {'marcada': 'Leitura nítida', 'duvidosa': 'Marca duvidosa ou rasura suspeita', 'multipla': 'Marcação múltipla', 'em_branco': 'Em branco', 'desalinhada': 'Alinhamento incerto'}.get(state, 'Conferir') }}
+            </span>
+          </div>
+          <div class="scan-review-options">
+            {% for letter in [''] + question.options %}
+              <label><input type="radio" name="answer_{{ question.number }}" value="{{ letter }}"{% if (selected if rectify else page.detected_answers).get(number, '') == letter %} checked{% endif %}>{{ letter or 'Em branco' }}</label>
+            {% endfor %}
+          </div>
+        </fieldset>
+      {% endfor %}
+      {% if rectify %}
+        <div class="field scan-review-reason">
+          <label for="rectify-reason">Motivo da retificação</label>
+          <textarea id="rectify-reason" name="reason" rows="3" minlength="5" maxlength="500" required aria-describedby="rectify-reason-help">{{ reason }}</textarea>
+          <small id="rectify-reason-help">O aluno verá este motivo junto com a nova nota.</small>
+        </div>
+        <label class="scan-review-confirm"><input type="checkbox" name="confirm_review" value="yes" required>Conferi as respostas na imagem e quero retificar o resultado publicado.</label>
+        <button class="button button--primary" type="submit">Retificar resultado</button>
+        <p class="scanner-note">A leitura original, a nota anterior, o motivo e quem retificou ficam registrados.</p>
+      {% else %}
+        <label class="scan-review-confirm"><input type="checkbox" name="confirm_review" value="yes" required>Conferi as respostas na imagem digitalizada.</label>
+        <button class="button button--primary" type="submit">Salvar conferência</button>
+        <p class="scanner-note">A leitura original e o histórico de alterações ficam registrados. Salvar não publica notas.</p>
+      {% endif %}
+    </form>
+  </div>
+  <script src="{{ url_for('static', filename='js/scanner-review.js') }}" defer></script>
 {% endblock %}

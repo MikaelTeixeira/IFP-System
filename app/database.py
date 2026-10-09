@@ -2,7 +2,7 @@ from pathlib import Path
 
 import click
 from flask import current_app
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 from .data.academic import DATA, INITIAL_DATA
 from .data.assessments import ASSESSMENTS, ASSESSMENT_REQUESTS, INITIAL_ASSESSMENTS
@@ -215,8 +215,29 @@ def _remove_orphan_file_records():
         db.session.commit()
 
 
+# Columns added after their table already existed in some database. create_all() creates
+# missing tables but never alters existing ones; each entry must be nullable.
+ADDED_COLUMNS = (("respostas", "gabarito"),)
+
+
+def _add_missing_columns():
+    inspector = inspect(db.engine)
+    preparer = db.engine.dialect.identifier_preparer
+    if_not_exists = "IF NOT EXISTS " if db.engine.dialect.name == "postgresql" else ""
+    for table_name, column_name in ADDED_COLUMNS:
+        if column_name in {column["name"] for column in inspector.get_columns(table_name)}:
+            continue
+        column = db.metadata.tables[table_name].c[column_name]
+        db.session.execute(text(
+            f"ALTER TABLE {preparer.format_table(column.table)} ADD COLUMN {if_not_exists}"
+            f"{preparer.format_column(column)} {column.type.compile(dialect=db.engine.dialect)}"
+        ))
+    db.session.commit()
+
+
 def create_and_seed_database():
     db.create_all()
+    _add_missing_columns()
     if db.engine.dialect.name == "postgresql":
         _close_data_api()
     _seed_reference_data()

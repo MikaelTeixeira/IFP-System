@@ -173,7 +173,8 @@ def prepare_page(image):
     if max(upright.shape[:2]) > 3000:
         factor = 3000 / max(upright.shape[:2])
         upright = cv2.resize(upright, None, fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
-    aligned = _alignment(upright) if barcode else None
+    # Keep a marker-aligned image available for human identification when the QR fails.
+    aligned = _alignment(upright)
     quality = {"aligned": bool(aligned), "issues": [qr_issue] if qr_issue else []}
     if aligned is None:
         quality["issues"].append("Não foi possível localizar os quatro marcadores. Digitalize novamente sem cortar os cantos.")
@@ -258,8 +259,9 @@ def analyze_answers(image, manifest):
             "state": state, "confidence": round(score, 3), "options": readings,
             "question_id": row["question_id"], "options_allowed": row["options"],
         }
-    # The weakest question determines whether the whole page may be accepted.
-    confidence = min((item["confidence"] for item in diagnostics.values()), default=0)
+    # A clearly blank answer is a valid zero, not an uncertain reading.
+    confidence = min((item["confidence"] for item in diagnostics.values()
+                      if item["state"] != "em_branco"), default=1.0)
     return answers, round(confidence, 3), issues, diagnostics
 
 

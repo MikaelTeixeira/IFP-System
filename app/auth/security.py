@@ -1,8 +1,22 @@
+import hmac
+import secrets
 from functools import wraps
 
-from flask import abort, current_app, g, has_app_context, redirect, session, url_for
+from flask import abort, current_app, g, has_app_context, redirect, request, session, url_for
 
 from .profiles import get_profile
+
+
+def csrf_token():
+    """Per-session token for forms that change grades or uploads."""
+    return session.setdefault("form_csrf", secrets.token_hex(24))
+
+
+def check_csrf():
+    submitted = request.form.get("csrf_token", "")
+    expected = session.get("form_csrf")
+    if not expected or not submitted.isascii() or not hmac.compare_digest(submitted, expected):
+        abort(400, "Atualize a página e tente novamente.")
 
 
 def current_profile():

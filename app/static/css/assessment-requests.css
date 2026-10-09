@@ -113,6 +113,9 @@
 .open-answer-feedback { margin-top: 12px; padding: 14px; background: var(--brand-navy-100); border-radius: var(--radius-small); }
 .open-answer-feedback p { margin: 5px 0 0; }
 .review-history { margin-top: 28px; }
+.regrade-panel { display: grid; gap: 14px; margin-top: 28px; padding: 22px 24px; background: var(--state-warning-soft); border: 1px solid var(--state-warning); border-radius: var(--radius-medium); }
+.regrade-panel h2 { margin: 0; font-size: 1.15rem; }.regrade-panel p { margin: 0; }.regrade-panel form { display: grid; justify-items: start; gap: 14px; }.regrade-panel .field { width: 100%; max-width: 640px; }
+.regrade-panel__confirm { display: flex; gap: 9px; align-items: flex-start; line-height: 1.4; cursor: pointer; }.regrade-panel__confirm input { width: 18px; height: 18px; flex: none; margin-top: 2px; }
 .review-history ol { display: grid; gap: 0; margin: 14px 0 0; padding: 0; list-style: none; background: white; border: 1px solid var(--border-default); border-radius: var(--radius-medium); }
 .review-history li { display: grid; grid-template-columns: 170px 130px minmax(0, 1fr); gap: 16px; padding: 15px 18px; }
 .review-history li + li { border-top: 1px solid var(--border-default); }

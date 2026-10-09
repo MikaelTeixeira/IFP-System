@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% from "macros/ui.html" import status_tag %}
+{% block content %}
+  {% set roster = preview.roster %}
+  <header class="page-header">
+    <div>
+      <p class="breadcrumb"><a href="{{ url_for('scanner.batch_detail', batch_id=batch.id) }}">{{ batch.original_name }}</a> <span aria-hidden="true">/</span> Resultados</p>
+      <h1>Confira as notas antes de lançar</h1>
+      <p>{{ assessment.titulo }} · {{ batch.page_count }} {{ 'página' if batch.page_count == 1 else 'páginas' }}</p>
+    </div>
+    <a class="button button--secondary" href="{{ url_for('scanner.batch_detail', batch_id=batch.id) }}">Voltar aos cartões</a>
+  </header>
+
+  <div class="scan-results-intro">
+    <strong>O lançamento publica o resultado para o aluno.</strong>
+    <p>Confira cada página. Respostas em branco valem zero. Páginas com problema e cartões repetidos precisam de uma decisão antes de lançar.</p>
+  </div>
+
+  <section class="scan-stats scan-results-stats" aria-label="Resumo do lote">
+    <div><span>Prontas para lançar</span><strong>{{ preview.ready|length }}</strong></div>
+    <div><span>Precisam de atenção</span><strong>{{ preview.blockers|length }}</strong></div>
+    <div><span>Desconsideradas</span><strong>{{ preview.ignored_count }}</strong></div>
+    <div><span>Já lançadas</span><strong>{{ preview.launched_count }}</strong></div>
+  </section>
+
+  {% if preview.blockers %}
+    <section class="scan-results-alert" aria-labelledby="scan-results-alert-title">
+      <h2 id="scan-results-alert-title">Resolva estas pendências</h2>
+      <ul>{% for blocker in preview.blockers %}{% for message in blocker.messages %}
+        <li>{% if blocker.page_number %}<strong>Página {{ blocker.page_number }}:</strong> {% endif %}{{ message }}</li>
+      {% endfor %}{% endfor %}</ul>
+    </section>
+  {% endif %}
+
+  <section class="scanner-section" aria-labelledby="scan-roster-title">
+    <div class="section-heading"><div><h2 id="scan-roster-title">Público esperado</h2><p>Alunos do filtro deste lote. Cartões lidos em outros lotes deste simulado também contam.</p></div></div>
+    <div class="scan-stats">
+      <div><span>Alunos esperados</span><strong>{{ roster.expected }}</strong></div>
+      <div><span>Com cartão lido</span><strong>{{ roster.received }}</strong></div>
+      <div><span>Com nota lançada</span><strong>{{ roster.launched }}</strong></div>
+      <div><span>Sem cartão lido</span><strong>{{ roster.missing|length }}</strong></div>
+    </div>
+    {% if roster.missing %}
+      <details class="scan-roster"{% if roster.without_result %} open{% endif %}>
+        <summary>{{ roster.missing|length }} {{ 'aluno' if roster.missing|length == 1 else 'alunos' }} sem cartão lido</summary>
+        <ul class="scan-roster-list">{% for student in roster.missing %}
+          <li>{{ student.name }} <small>· matrícula {{ student.enrollment or '—' }}{% if student.has_result %} · já tem resultado de outra forma{% endif %}</small></li>
+        {% endfor %}</ul>
+        <p class="scan-result-muted">Envie esses cartões em um novo lote. Quem faltou à prova continua sem nota até receber um resultado.</p>
+      </details>
+    {% endif %}
+  </section>
+
+  <section class="scanner-section" aria-labelledby="scan-results-list-title">
+    <div class="section-heading"><div><h2 id="scan-results-list-title">Alunos e páginas</h2><p>As escolhas são registradas junto ao cartão para consulta posterior.</p></div></div>
+    <div class="scan-result-list">
+      {% for row in preview.rows %}{% set page = row.page %}
+        <article class="scan-result-card" id="pagina-{{ page.page_number }}">
+          <div class="scan-result-card__main">
+            <div class="scan-result-card__heading">
+              <div><span class="scan-result-card__eyebrow">Página {{ page.page_number }}</span><h3>{{ row.student_name }}</h3></div>
+              {{ status_tag(page.status, 'success' if page.status in ['Lido', 'Conferido', 'Lançado'] else 'warning') }}
+            </div>
+            {% if row.score is not none %}<p class="scan-result-score"><strong>{{ row.score }} de {{ row.total }}</strong> questões corretas{% if row.blanks %} · {{ row.blanks }} em branco{% endif %}</p>{% endif %}
+            {% if row.corrections %}{% set last = row.corrections[-1] %}<p class="scan-result-muted">Resultado retificado{% if row.corrections|length > 1 %} {{ row.corrections|length }} vezes{% endif %} · último em {{ last.created_at.strftime('%d/%m/%Y') }}: {{ last.reason }}</p>{% endif %}
+            {% if page.status == 'Ignorada' %}<p class="scan-result-muted">{{ page.issue or 'Página desconsiderada.' }}</p>{% endif %}
+            {% if row.issues %}<ul class="scan-result-issues">{% for issue in row.issues %}<li>{{ issue }}</li>{% endfor %}</ul>{% endif %}
+            {% if row.duplicate %}<p class="scan-result-muted">Outro cartão: {% for duplicate in row.duplicate %}{% if duplicate.batch_id in accessible_batch_ids %}<a href="{{ url_for('scanner.batch_detail', batch_id=duplicate.batch_id) }}">lote da página {{ duplicate.page_number }}</a>{% else %}lote {{ duplicate.batch_id }} (procure a coordenação responsável){% endif %}{{ ', ' if not loop.last }}{% endfor %}.</p>{% endif %}
+            {% if row.conflict and page.status in ['Lido', 'Conferido'] %}
+              <div class="scan-result-conflict">
+                <strong>Já existe uma tentativa para este aluno</strong>
+                <p>Situação: {{ row.conflict.status }}{% if row.conflict.score is not none %} · nota {{ row.conflict.score|int }}{% endif %}. Escolha qual resultado deve aparecer para o aluno.</p>
+                {% if row.choice == 'use_card' %}<p class="scan-result-choice" role="status">Cartão escolhido. A tentativa anterior será arquivada quando você lançar.</p>{% endif %}
+                <div class="scan-result-conflict__choices">
+                  <form method="post" action="{{ url_for('scanner.page_decision', batch_id=batch.id, page_id=page.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="keep_online"><input type="hidden" name="attempt_id" value="{{ row.conflict.id }}">
+                    <label class="scan-result-check"><input type="checkbox" name="confirm_decision" value="yes" required> Manter a tentativa anterior e desconsiderar este cartão</label>
+                    <button class="button button--secondary" type="submit">Manter resultado anterior</button>
+                  </form>
+                  <form method="post" action="{{ url_for('scanner.page_decision', batch_id=batch.id, page_id=page.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="use_card"><input type="hidden" name="attempt_id" value="{{ row.conflict.id }}">
+                    <label class="scan-result-check"><input type="checkbox" name="confirm_decision" value="yes" required> Usar este cartão e arquivar a tentativa anterior</label>
+                    <button class="button button--secondary" type="submit">Usar nota do cartão</button>
+                  </form>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+          <div class="scan-result-card__actions">
+            <a class="button button--quiet" href="{{ url_for('scanner.batch_page_image', batch_id=batch.id, page_id=page.id, variant='original') }}" target="_blank" rel="noopener">Ver cartão</a>
+            {% if page.status in ['Lido', 'Conferido', 'Revisão'] %}<a class="button button--secondary" href="{{ url_for('scanner.page_review', batch_id=batch.id, page_id=page.id) }}">Conferir respostas</a>{% endif %}
+            {% if page.status == 'Lançado' %}<a class="button button--secondary" href="{{ url_for('scanner.page_rectify', batch_id=batch.id, page_id=page.id) }}" data-tooltip="Use quando o cartão foi lido errado depois do lançamento.">Retificar resultado</a>{% endif %}
+            {% if page.status == 'Falha' and page.analysis.get('failure_reason') == 'qr_unreadable' and page.analysis.get('quality', {}).get('aligned') %}<a class="button button--secondary" href="{{ url_for('scanner.identify_failed_page', batch_id=batch.id, page_id=page.id) }}">Identificar aluno</a>{% endif %}
+            {% if page.status == 'Ignorada' %}
+              <form method="post" action="{{ url_for('scanner.page_decision', batch_id=batch.id, page_id=page.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="restore"><button class="button button--quiet" type="submit">Restaurar página</button></form>
+            {% elif page.status != 'Lançado' %}
+              <details class="scan-result-ignore"><summary>Desconsiderar esta página</summary>
+                <form method="post" action="{{ url_for('scanner.page_decision', batch_id=batch.id, page_id=page.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="ignore">
+                  <label for="reason-{{ page.id }}">Motivo</label><select id="reason-{{ page.id }}" name="reason" required><option value="">Selecione</option><option value="Duplicata">Cartão repetido</option><option value="Nova digitalização">Nova digitalização</option><option value="Página inválida">Página inválida</option></select>
+                  <label class="scan-result-check"><input type="checkbox" name="confirm_decision" value="yes" required> Confirmo que esta página não deve gerar nota</label>
+                  <button class="button button--secondary" type="submit">Desconsiderar página</button>
+                </form>
+              </details>
+            {% endif %}
+          </div>
+        </article>
+      {% else %}<p>Nenhuma página neste lote.</p>{% endfor %}
+    </div>
+  </section>
+
+  {% if preview.ready or preview.blockers %}
+    <section class="scan-results-launch" aria-labelledby="scan-results-launch-title">
+      <h2 id="scan-results-launch-title">Lançar resultados</h2>
+      <p>{% if preview.can_publish %}{{ preview.ready|length }} {{ 'aluno receberá' if preview.ready|length == 1 else 'alunos receberão' }} o resultado ao confirmar.{% else %}O lançamento será liberado quando todas as pendências acima forem resolvidas.{% endif %}</p>
+      <form method="post" action="{{ url_for('scanner.launch_batch_results', batch_id=batch.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if roster.without_result %}{% set absent = roster.without_result %}
+          <p class="scan-roster-warning"><strong>{{ absent }} {{ 'aluno do público está' if absent == 1 else 'alunos do público estão' }} sem cartão lido.</strong> {{ 'Ele continuará' if absent == 1 else 'Eles continuarão' }} sem nota até o cartão ser enviado.</p>
+          <label class="scan-result-check"><input type="checkbox" name="confirm_missing" value="yes" required {% if not preview.can_publish %}disabled{% endif %}> Entendo que {{ absent }} {{ 'aluno ficará' if absent == 1 else 'alunos ficarão' }} sem nota por enquanto</label>
+        {% endif %}
+        <label class="scan-result-check"><input type="checkbox" name="confirm_launch" value="yes" required {% if not preview.can_publish %}disabled{% endif %}> Conferi as notas e autorizo a publicação para os alunos</label>
+        <button class="button button--primary" type="submit" {% if not preview.can_publish %}disabled{% endif %}>Lançar {{ preview.ready|length }} {{ 'resultado' if preview.ready|length == 1 else 'resultados' }}</button>
+      </form>
+    </section>
+  {% elif preview.launched_count %}
+    <p class="scan-results-done" role="status">Resultados lançados. Os alunos já podem consultar as notas.</p>
+  {% endif %}
+{% endblock %}

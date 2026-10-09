@@ -251,3 +251,36 @@ def find_identity_conflict(cpf="", email="", exclude_id=None):
             if normalized_email and normalize_email(account.email) == normalized_email:
                 return "email", account.to_record()
     return None, None
+SCOPE_KEYS = ("institution_id", "series_name", "school_year", "class_id")
+
+
+def matches_scope(audience, scope):
+    """An empty scope key means "any value", so a partial filter still matches."""
+    return all(not scope.get(key) or audience.get(key) == scope[key] for key in SCOPE_KEYS)
+
+
+def student_audience(student):
+    school_class = find("turmas", student.get("turma_id", "")) or {}
+    return {
+        "institution_id": student["instituicao_id"], "class_id": student.get("turma_id", ""),
+        "series_name": (find("series", school_class.get("serie_id", "")) or {}).get("nome", ""),
+        "school_year": school_class.get("ano_letivo", ""),
+    }
+
+
+def eligible_students(assessment, scope):
+    """The students an assessment is meant to reach inside a scope: the expected audience."""
+    allowed_series = set(assessment.get("serie_ids", []))
+    students = []
+    for student in DATA["alunos"]:
+        audience = student_audience(student)
+        school_class = find("turmas", student.get("turma_id", "")) or {}
+        if student["instituicao_id"] not in assessment.get("instituicao_ids", []):
+            continue
+        if student.get("status", "").lower() not in {"ativo", "ativa"}:
+            continue
+        if allowed_series and school_class.get("serie_id") not in allowed_series:
+            continue
+        if matches_scope(audience, scope):
+            students.append(student)
+    return sorted(students, key=lambda item: (item["instituicao_id"], item.get("turma_id", ""), item["nome"]))

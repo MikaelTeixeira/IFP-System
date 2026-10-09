@@ -23,13 +23,14 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/scanner.css') }}">
     <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/tooltips.js') }}" defer></script>
   </head>
   <body{% if current_profile %} class="role-{{ current_profile.key|replace('_', '-') }}"{% endif %}>
     <a class="skip-link" href="#conteudo-principal">Ir para o conteúdo</a>
 
     <div class="app-shell" data-app-shell>
       <header class="topbar">
-        <button class="icon-button menu-toggle" type="button" data-menu-toggle aria-expanded="false" aria-controls="main-navigation">
+        <button class="icon-button menu-toggle" type="button" data-menu-toggle data-tooltip="Abrir o menu de áreas" aria-expanded="false" aria-controls="main-navigation">
           <span class="sr-only">Abrir menu</span>
           <span aria-hidden="true">{{ icon('menu') }}</span>
         </button>
@@ -38,12 +39,12 @@
           <span class="brand__name">Instituto <strong>Fabiana Pinto</strong></span>
         </a>
         <div class="topbar__actions">
-          {% if current_profile %}<a class="icon-button notification-button{% if unread_notifications %} has-unread{% endif %}" href="{{ url_for('core.notifications') }}" aria-label="Notificações{% if unread_notifications %}: {{ unread_notifications }} {% if unread_notifications == 1 %}não lida{% else %}não lidas{% endif %}{% endif %}">
+          {% if current_profile %}<a class="icon-button notification-button{% if unread_notifications %} has-unread{% endif %}" href="{{ url_for('core.notifications') }}" aria-label="Notificações{% if unread_notifications %}: {{ unread_notifications }} {% if unread_notifications == 1 %}não lida{% else %}não lidas{% endif %}{% endif %}" data-tooltip="Ver notificações{% if unread_notifications %} · {{ unread_notifications }} não lida{% if unread_notifications != 1 %}s{% endif %}{% endif %}">
             {{ icon('bell', 'notification-button__icon') }}
             {% if unread_notifications %}<span class="notification-button__badge" aria-hidden="true">{% if unread_notifications > 99 %}99+{% else %}{{ unread_notifications }}{% endif %}</span>{% endif %}
           </a>{% endif %}
           {% if current_profile %}<details class="profile-menu">
-            <summary class="profile-chip" aria-label="Abrir opções do perfil demonstrativo">
+            <summary class="profile-chip" aria-label="Abrir opções do perfil demonstrativo" data-tooltip="Trocar perfil ou sair">
               <span class="profile-chip__avatar" aria-hidden="true">{{ current_profile.initials }}</span>
               <span class="profile-chip__copy"><strong>{{ current_profile.name }}</strong><small>{{ current_profile.label }}</small></span>
             </summary>

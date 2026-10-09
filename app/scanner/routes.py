@@ -1,30 +1,29 @@
 import base64
-import hmac
-import secrets
+from datetime import UTC, datetime
 from pathlib import Path
 
 import cv2
 import numpy as np
 import pypdfium2
 import zxingcpp
-from flask import abort, current_app, flash, redirect, render_template, request, send_file, session, url_for
+from flask import abort, current_app, flash, redirect, render_template, request, send_file, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from . import scanner_bp
 from .layout import BUBBLE_RADIUS_MM, MARKER_CENTERS_MM, MARKER_SIZE_MM, TEMPLATE_VERSION, answer_rows, question_manifest
+from .results import READY_STATES, current_attempt, preview_results, publish_results, rectify_paper_page
 from .vision import analyze_answers, annotated_page, iter_upload_pages, prepare_page, save_page, validate_upload
-from ..auth.security import current_profile, roles_required
-from ..data.academic import DATA
+from ..auth.security import check_csrf, csrf_token, current_profile, roles_required
+from ..data.academic import DATA, SCOPE_KEYS, eligible_students, matches_scope, student_audience
 from ..data.answer_sheets import (
-    add_batch_page, create_batch, finish_batch, get_batch, get_sheet, issue_sheet,
-    list_batches, review_page, sheet_for_token,
+    REVIEWABLE_STATES, add_batch_page, create_batch, decide_page, find_sheets, finish_batch, get_batch, get_sheet,
+    identify_page, issue_sheet, list_batches, review_page, sheet_for_token,
 )
 from ..data.assessments import ASSESSMENTS, find_assessment
 from ..data.questions import QUESTIONS
 
 
 ALLOWED_ROLES = ("school_coordinator", "institute_coordinator", "it_admin")
-SCOPE_KEYS = ("institution_id", "series_name", "school_year", "class_id")
 
 
 @scanner_bp.before_request
@@ -37,17 +36,6 @@ def scan_request_limits():
 def upload_too_large(_error):
     flash("O arquivo excede o limite de 50 MB por lote.", "danger")
     return redirect(url_for("scanner.index"))
-
-
-def _csrf_token():
-    return session.setdefault("scanner_csrf", secrets.token_hex(24))
-
-
-def _check_csrf():
-    submitted = request.form.get("csrf_token", "")
-    expected = session.get("scanner_csrf")
-    if not expected or not submitted.isascii() or not hmac.compare_digest(submitted, expected):
-        abort(400, "Atualize a página e tente novamente.")
 
 
 def _accessible_assessments(profile):
@@ -100,32 +88,6 @@ def _scope_selection(assessment, values):
     return scope, options
 
 
-def _eligible_students(assessment, scope):
-    series = {item["id"]: item for item in DATA["series"]}
-    classes = {item["id"]: item for item in DATA["turmas"]}
-    allowed_series = set(assessment.get("serie_ids", []))
-    students = []
-    for student in DATA["alunos"]:
-        school_class = classes.get(student.get("turma_id"), {})
-        if student["instituicao_id"] not in assessment.get("instituicao_ids", []):
-            continue
-        if student.get("status", "").lower() not in {"ativo", "ativa"}:
-            continue
-        if allowed_series and school_class.get("serie_id") not in allowed_series:
-            continue
-        if _matches_scope({
-            "institution_id": student["instituicao_id"], "class_id": student.get("turma_id", ""),
-            "series_name": series.get(school_class.get("serie_id"), {}).get("nome", ""),
-            "school_year": school_class.get("ano_letivo", ""),
-        }, scope):
-            students.append(student)
-    return sorted(students, key=lambda item: (item["instituicao_id"], item.get("turma_id", ""), item["nome"]))
-
-
-def _matches_scope(audience, scope):
-    return all(not scope.get(key) or audience.get(key) == scope[key] for key in SCOPE_KEYS)
-
-
 def _can_access_batch(batch):
     if batch["assessment_id"] not in {item["id"] for item in _accessible_assessments(current_profile())}:
         return False
@@ -168,14 +130,14 @@ def index():
         except ValueError as exc:
             flash(str(exc), "danger")
             scope, options = _scope_selection(assessment, {})
-        students = _eligible_students(assessment, scope)
+        students = eligible_students(assessment, scope)
     batches = [item for item in list_batches() if _can_access_batch(item)
                and (not assessment or item["assessment_id"] == assessment["id"])
-               and _matches_scope(item.get("scope", {}), scope)]
+               and matches_scope(item.get("scope", {}), scope)]
     return render_template(
         "scanner/index.html", page_title="Cartões-resposta", assessments=assessments,
         assessment=assessment, scope=scope, options=options, student_count=len(students),
-        batches=batches, csrf_token=_csrf_token(), active_navigation="cartoes-resposta",
+        batches=batches, csrf_token=csrf_token(), active_navigation="cartoes-resposta",
     )
 
 
@@ -193,14 +155,11 @@ def print_cards(assessment_id):
     series = {item["id"]: item for item in DATA["series"]}
     institutions = {item["id"]: item for item in DATA["instituicoes"]}
     cards = []
-    for student in _eligible_students(assessment, scope):
+    for student in eligible_students(assessment, scope):
         school_class = classes.get(student.get("turma_id"), {})
         school_series = series.get(school_class.get("serie_id"), {})
-        audience = {
-            "institution_id": student["instituicao_id"], "class_id": student.get("turma_id", ""),
-            "series_name": school_series.get("nome", ""), "school_year": school_class.get("ano_letivo", ""),
-        }
-        sheet = issue_sheet(assessment_id, student["id"], {"questions": manifest, "audience": audience})
+        sheet = issue_sheet(assessment_id, student["id"],
+                            {"questions": manifest, "audience": student_audience(student)})
         cards.append({
             "sheet": sheet, "student": student, "school_class": school_class, "series": school_series,
             "institution": institutions.get(student["instituicao_id"], {}), "qr": _qr_data_uri(sheet["token"]),
@@ -231,10 +190,12 @@ def _process_page(batch, page_number, image, seen, previous):
     }
     sheet = sheet_for_token(token)
     if not sheet:
-        values["issue"] = "QR inválido, não reconhecido ou cartão não emitido neste ambiente."
+        values["issue"] = ("QR não foi lido. Digitalize novamente ou confira os dados impressos."
+                           if not token else "QR inválido, não reconhecido ou cartão não emitido neste ambiente.")
+        values["analysis"]["failure_reason"] = "qr_unreadable" if not token else "qr_invalid"
     elif sheet["assessment_id"] != batch["assessment_id"]:
         values["issue"] = "O cartão pertence a outro simulado."
-    elif not _matches_scope(sheet.get("snapshot", {}).get("audience", {}), batch["scope"]):
+    elif not matches_scope(sheet.get("snapshot", {}).get("audience", {}), batch["scope"]):
         values["issue"] = "O cartão não pertence à instituição, série/ano, turma ou ano letivo selecionado."
     elif sheet["id"] in seen:
         values["issue"] = "Cartão duplicado neste lote. Confira a outra página deste estudante."
@@ -258,10 +219,15 @@ def _process_page(batch, page_number, image, seen, previous):
                 current_manifest = []
             if current_manifest != manifest:
                 issues.insert(0, "A composição do simulado mudou após a emissão. A leitura usa as questões originais do cartão.")
+            blocking_states = {"duvidosa", "multipla", "desalinhada"}
+            requires_review = (bool(quality["issues"]) or sheet["id"] in previous
+                               or current_manifest != manifest
+                               or any(item["state"] in blocking_states for item in diagnostics.values())
+                               or confidence < .80)
             overlay_path = save_page(root, batch["id"], page_number,
                                      annotated_page(normalized, diagnostics, answers), "reading")
             values.update({
-                "status": "Revisão" if issues or confidence < .80 else "Lido",
+                "status": "Revisão" if requires_review else "Lido",
                 "detected_answers": answers, "confidence": confidence, "issue": _short_issue(issues),
             })
             values["analysis"].update({
@@ -274,7 +240,7 @@ def _process_page(batch, page_number, image, seen, previous):
 @scanner_bp.post("/simulados/<assessment_id>/enviar")
 @roles_required(*ALLOWED_ROLES)
 def upload_batch(assessment_id):
-    _check_csrf()
+    check_csrf()
     assessment = _assessment_or_404(assessment_id)
     uploaded = request.files.get("scan_file")
     try:
@@ -287,7 +253,7 @@ def upload_batch(assessment_id):
         flash(str(exc), "danger")
         return redirect(url_for("scanner.index", assessment_id=assessment_id))
     previous = {page["answer_sheet_id"] for item in list_batches() if _can_access_batch(item)
-                for page in item["pages"] if page.get("answer_sheet_id") and page["status"] != "Falha"}
+                for page in item["pages"] if page.get("answer_sheet_id") and page["status"] not in {"Falha", "Ignorada"}}
     batch = create_batch(assessment_id, uploaded.filename, current_profile(), scope)
     seen = set()
     try:
@@ -316,33 +282,228 @@ def batch_detail(batch_id):
     )
 
 
-@scanner_bp.route("/lotes/<batch_id>/paginas/<page_id>/revisar", methods=["GET", "POST"])
+@scanner_bp.get("/lotes/<batch_id>/resultados")
 @roles_required(*ALLOWED_ROLES)
-def page_review(batch_id, page_id):
+def batch_results(batch_id):
+    batch = _batch_or_404(batch_id)
+    assessment = _assessment_or_404(batch["assessment_id"])
+    preview = preview_results(batch, assessment, QUESTIONS)
+    return render_template(
+        "scanner/results.html", page_title="Prévia das notas", batch=batch,
+        assessment=assessment, preview=preview, csrf_token=csrf_token(),
+        accessible_batch_ids={item["id"] for item in list_batches() if _can_access_batch(item)},
+        active_navigation="cartoes-resposta",
+    )
+
+
+@scanner_bp.post("/lotes/<batch_id>/paginas/<page_id>/decidir")
+@roles_required(*ALLOWED_ROLES)
+def page_decision(batch_id, page_id):
+    check_csrf()
     batch = _batch_or_404(batch_id)
     page = next((item for item in batch["pages"] if item["id"] == page_id), None)
-    if not page or not page.get("answer_sheet_id") or page["status"] == "Falha":
+    if not page or page["status"] == "Lançado":
+        abort(404)
+    action = request.form.get("action", "")
+    analysis = dict(page.get("analysis") or {})
+    events = list(analysis.get("result_decisions", []))
+    event = {"action": action, "reviewer": current_profile().get("account_id", "global"),
+             "at": datetime.now(UTC).isoformat()}
+    status, issue = page["status"], page["issue"]
+    if action == "ignore" and status in {"Falha", "Revisão", *READY_STATES}:
+        reason = request.form.get("reason", "")
+        if reason not in {"Duplicata", "Nova digitalização", "Página inválida"} or request.form.get("confirm_decision") != "yes":
+            abort(400)
+        analysis["ignored_previous"] = {"status": status, "issue": issue}
+        analysis.pop("result_choice", None)
+        status, issue = "Ignorada", f"Desconsiderada: {reason}."
+        event["reason"] = reason
+    elif action == "restore" and status == "Ignorada":
+        previous = analysis.get("ignored_previous", {})
+        if previous.get("status") not in {"Falha", "Revisão", *READY_STATES}:
+            abort(400)
+        status, issue = previous["status"], previous.get("issue", "")
+        analysis.pop("ignored_previous", None)
+    elif action in {"keep_online", "use_card"} and status in READY_STATES and current_app.config["DATABASE_ENABLED"] and page.get("student_id"):
+        attempt = current_attempt(batch["assessment_id"], page["student_id"])
+        if not attempt or attempt.id != request.form.get("attempt_id") or request.form.get("confirm_decision") != "yes":
+            abort(400)
+        event["attempt_id"] = attempt.id
+        if action == "keep_online":
+            analysis["ignored_previous"] = {"status": status, "issue": issue}
+            analysis.pop("result_choice", None)
+            status, issue = "Ignorada", "Desconsiderada: tentativa anterior mantida."
+        else:
+            analysis["result_choice"] = {"decision": "use_card", "attempt_id": attempt.id,
+                                         "reviewer": event["reviewer"], "at": event["at"]}
+    else:
+        abort(400)
+    events.append(event)
+    analysis["result_decisions"] = events
+    try:
+        decide_page(batch_id, page_id, status, analysis, issue, expected_status=page["status"])
+    except ValueError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("scanner.batch_results", batch_id=batch_id))
+    flash("Decisão registrada para esta página.", "success")
+    return redirect(url_for("scanner.batch_results", batch_id=batch_id))
+
+
+@scanner_bp.post("/lotes/<batch_id>/resultados/lancar")
+@roles_required(*ALLOWED_ROLES)
+def launch_batch_results(batch_id):
+    check_csrf()
+    batch = _batch_or_404(batch_id)
+    if request.form.get("confirm_launch") != "yes":
+        abort(400)
+    assessment = _assessment_or_404(batch["assessment_id"])
+    try:
+        count = publish_results(batch_id, assessment, QUESTIONS, current_profile(),
+                                missing_acknowledged=request.form.get("confirm_missing") == "yes")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("scanner.batch_results", batch_id=batch_id))
+    flash(f"{count} resultado{'s' if count != 1 else ''} lançado{'s' if count != 1 else ''} e aluno{'s' if count != 1 else ''} notificado{'s' if count != 1 else ''}.", "success")
+    return redirect(url_for("scanner.batch_results", batch_id=batch_id))
+
+
+@scanner_bp.route("/lotes/<batch_id>/paginas/<page_id>/identificar", methods=["GET", "POST"])
+@roles_required(*ALLOWED_ROLES)
+def identify_failed_page(batch_id, page_id):
+    batch = _batch_or_404(batch_id)
+    page = next((item for item in batch["pages"] if item["id"] == page_id), None)
+    if (not page or page["status"] != "Falha"
+            or page.get("analysis", {}).get("failure_reason") != "qr_unreadable"
+            or not page.get("analysis", {}).get("quality", {}).get("aligned")):
+        abort(404)
+
+    assessment = find_assessment(batch["assessment_id"])
+    eligible = {item["id"]: item for item in eligible_students(assessment, batch["scope"])}
+    sheets_by_student = {}
+    for sheet in find_sheets(batch["assessment_id"]):
+        sheets_by_student.setdefault(sheet["student_id"], []).append(sheet)
+    used_sheet_ids = {other["answer_sheet_id"] for item in list_batches() for other in item["pages"]
+                      if other["id"] != page_id and other.get("answer_sheet_id") and other["status"] != "Falha"}
+    candidates = {}
+    for student_id, student in eligible.items():
+        sheets = sheets_by_student.get(student_id, [])
+        if len(sheets) != 1:
+            continue
+        sheet = sheets[0]
+        snapshot = sheet.get("snapshot", {})
+        if (sheet["template_version"] == TEMPLATE_VERSION and sheet["id"] not in used_sheet_ids
+                and snapshot.get("questions") and matches_scope(snapshot.get("audience", {}), batch["scope"])):
+            candidates[student_id] = (student, sheet)
+
+    if request.method == "POST":
+        check_csrf()
+        selected = candidates.get(request.form.get("student_id", ""))
+        enrollment = request.form.get("enrollment", "").strip()
+        if not selected or not enrollment or enrollment != selected[0].get("matricula"):
+            flash("Selecione o aluno e digite a matrícula exatamente como está no cartão.", "danger")
+        elif request.form.get("confirm_identity") != "yes":
+            flash("Confirme que nome, matrícula e simulado correspondem ao cartão.", "danger")
+        else:
+            sheet = selected[1]
+            root = Path(current_app.config["SCAN_ROOT"]).resolve()
+            image_path = (root / page["image_path"]).resolve()
+            if root not in image_path.parents or not image_path.is_file():
+                abort(404)
+            image = cv2.imread(str(image_path))
+            if image is None:
+                abort(404)
+            manifest = sheet["snapshot"]["questions"]
+            answers, confidence, issues, diagnostics = analyze_answers(image, manifest)
+            overlay_path = save_page(root, batch_id, page["page_number"],
+                                     annotated_page(image, diagnostics, answers), "reading")
+            analysis = dict(page["analysis"])
+            analysis.update({"issues": page["analysis"]["quality"]["issues"] + issues,
+                             "questions": diagnostics, "manifest": manifest})
+            try:
+                identify_page(batch_id, page_id, sheet, answers, confidence, analysis, overlay_path, current_profile())
+            except ValueError as exc:
+                flash(str(exc), "danger")
+                return redirect(url_for("scanner.batch_detail", batch_id=batch_id))
+            flash("Estudante identificado. Confira todas as respostas antes de lançar o resultado.", "success")
+            return redirect(url_for("scanner.page_review", batch_id=batch_id, page_id=page_id))
+
+    return render_template(
+        "scanner/identify.html", page_title="Identificar cartão", batch=batch, page=page,
+        assessment=assessment, candidates=[item[0] for item in candidates.values()],
+        csrf_token=csrf_token(), active_navigation="cartoes-resposta",
+    )
+
+
+def _page_with_manifest(batch_id, page_id, statuses):
+    batch = _batch_or_404(batch_id)
+    page = next((item for item in batch["pages"] if item["id"] == page_id), None)
+    if not page or not page.get("answer_sheet_id") or page["status"] not in statuses:
         abort(404)
     sheet = get_sheet(page["answer_sheet_id"])
     manifest = sheet.get("snapshot", {}).get("questions", []) if sheet else []
     if not manifest:
         abort(404)
+    return batch, page, manifest
+
+
+def _submitted_answers(manifest):
+    answers = {str(question["number"]): request.form.get(f"answer_{question['number']}", "") for question in manifest}
+    if any(answers[str(question["number"])] not in ["", *question["options"]] for question in manifest):
+        abort(400, "Alternativa inválida.")
+    return answers
+
+
+def _render_review(batch, page, manifest, **context):
+    student = next((item for item in DATA["alunos"] if item["id"] == page["student_id"]), None)
+    return render_template(
+        "scanner/review.html", batch=batch, page=page, student=student, manifest=manifest,
+        csrf_token=csrf_token(), active_navigation="cartoes-resposta", **context,
+    )
+
+
+@scanner_bp.route("/lotes/<batch_id>/paginas/<page_id>/revisar", methods=["GET", "POST"])
+@roles_required(*ALLOWED_ROLES)
+def page_review(batch_id, page_id):
+    batch, page, manifest = _page_with_manifest(batch_id, page_id, REVIEWABLE_STATES)
     if request.method == "POST":
-        _check_csrf()
-        answers = {str(question["number"]): request.form.get(f"answer_{question['number']}", "") for question in manifest}
-        if any(answers[str(question["number"])] not in ["", *question["options"]] for question in manifest):
-            abort(400, "Alternativa inválida.")
+        check_csrf()
+        answers = _submitted_answers(manifest)
         if request.form.get("confirm_review") != "yes":
             flash("Confirme que comparou as respostas com a digitalização.", "danger")
         else:
-            review_page(batch_id, page_id, answers, current_profile())
+            try:
+                review_page(batch_id, page_id, answers, current_profile())
+            except ValueError as exc:
+                flash(str(exc), "danger")
+                return redirect(url_for("scanner.batch_detail", batch_id=batch_id))
             flash("Respostas conferidas. A leitura original permanece no histórico.", "success")
             return redirect(url_for("scanner.batch_detail", batch_id=batch_id))
-    student = next((item for item in DATA["alunos"] if item["id"] == page["student_id"]), None)
-    return render_template(
-        "scanner/review.html", page_title="Conferir cartão", batch=batch, page=page, student=student,
-        manifest=manifest, csrf_token=_csrf_token(), active_navigation="cartoes-resposta",
-    )
+    return _render_review(batch, page, manifest, page_title="Conferir cartão")
+
+
+@scanner_bp.route("/lotes/<batch_id>/paginas/<page_id>/retificar", methods=["GET", "POST"])
+@roles_required(*ALLOWED_ROLES)
+def page_rectify(batch_id, page_id):
+    """Fix a misread card after its result was published; the old grade stays in the history."""
+    batch, page, manifest = _page_with_manifest(batch_id, page_id, {"Lançado"})
+    selected, reason = page["detected_answers"], ""
+    if request.method == "POST":
+        check_csrf()
+        selected, reason = _submitted_answers(manifest), request.form.get("reason", "")
+        if request.form.get("confirm_review") != "yes":
+            flash("Confirme que comparou as respostas com a digitalização.", "danger")
+        else:
+            try:
+                correction = rectify_paper_page(batch_id, page_id, selected, reason, current_profile())
+            except ValueError as exc:
+                flash(str(exc), "danger")
+            else:
+                before, after = correction.details["objective"]
+                flash(f"Resultado retificado: {before:g} → {after:g} acertos. O aluno foi avisado."
+                      if before != after else "Respostas retificadas. A nota não mudou.", "success")
+                return redirect(url_for("scanner.batch_results", batch_id=batch_id) + f"#pagina-{page['page_number']}")
+    return _render_review(batch, page, manifest, page_title="Retificar resultado", rectify=True,
+                          selected=selected, reason=reason)
 
 
 @scanner_bp.get("/lotes/<batch_id>/paginas/<page_id>/imagem")
